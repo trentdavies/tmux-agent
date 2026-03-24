@@ -416,10 +416,15 @@ static CC_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
         "unhandled exception",
     ],
     rate_limit: vec![
-        "rate limit",
-        "Rate limit",
-        "429",
+        "you've hit your limit",
+        "you.ve hit your limit",
+        "rate limit exceeded",
+        "usage limit",
+        "request limit",
+        "exceeded the limit",
         "too many requests",
+        "please wait",
+        "try again later",
         "overloaded",
     ],
 });
@@ -432,5 +437,11 @@ static COD_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
         Regex::new(r"(?m)^\s*›\s*.*$").unwrap(),
     ],
     error: vec!["error:", "Error:", "ERROR", "panic:", "fatal:"],
-    rate_limit: vec!["rate limit", "Rate limit", "429", "too many requests"],
+    rate_limit: vec![
+        "you've reached your usage limit",
+        "rate limit exceeded",
+        "quota exceeded",
+        "too many requests",
+        "maximum requests",
+    ],
 });

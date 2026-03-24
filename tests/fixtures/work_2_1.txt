@@ -1,0 +1,60 @@
+# target: work:2.1
+# title: 
+# command: zsh
+# pid: 23633
+---
+M  AGENTS.md
+M  Cargo.toml
+M  docs/architecture.md
+M  src/agent.rs
+M  src/main.rs
+❯ git diff -u
+─────┬───────────────────────────────────────────────────────────────────────────────────────────────────
+     │ STDIN   <EMPTY>
+─────┴───────────────────────────────────────────────────────────────────────────────────────────────────
+❯ git diff -u --staged
+❯ git st
+## main
+M  AGENTS.md
+M  Cargo.toml
+M  docs/architecture.md
+M  src/agent.rs
+M  src/main.rs
+❯ git ci -am 'clean up stale artifacts'
+[main dfcd217] clean up stale artifacts
+ 5 files changed, 6 insertions(+), 40 deletions(-)
+❯ gh 2p
+✓ Switched active account for github.com to trentdavies
+❯ gh repo create
+? What would you like to do? Push an existing local repository to github.com
+? Path to local repository .
+? Repository name tmux-agent
+? Repository owner trentdavies
+? Description tmux tooling for working with agents
+? Visibility Public
+✓ Created repository trentdavies/tmux-agent on github.com
+  https://github.com/trentdavies/tmux-agent
+? Add a remote? Yes
+? What should the new remote be called? origin
+✓ Added remote https://github.com/trentdavies/tmux-agent.git
+? Would you like to push commits from the current branch to "origin"? Yes
+Enumerating objects: 143, done.
+Counting objects: 100% (143/143), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (139/139), done.
+Writing objects: 100% (143/143), 59.09 KiB | 11.82 MiB/s, done.
+Total 143 (delta 78), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (78/78), done.
+To https://github.com/trentdavies/tmux-agent.git
+ * [new branch]      HEAD -> main
+branch 'main' set up to track 'origin/main'.
+✓ Pushed commits to https://github.com/trentdavies/tmux-agent.git
+❯ git st
+## main...origin/main
+ M src/agent.rs
+❯ git diff
+❯ git ci -am 'adjust agent status detection'
+[main 65fcb15] adjust agent status detection
+ 1 file changed, 56 insertions(+), 38 deletions(-)
+~/d/t/agent-tmux-tools main ⇡1
+❯

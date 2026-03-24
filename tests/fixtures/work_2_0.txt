@@ -1,0 +1,86 @@
+# target: work:2.0
+# title: ⠐ tmux-agent-task-planner
+# command: bash
+# pid: 19151
+---
+      338 -    // 4. Working detection (last 20 lines for keyword patterns)
+      339 -    let is_working = if *agent_type == AgentType::Cc {
+      340 -        CC_SPINNER_OUTPUT.iter().any(|re| re.is_match(&last_20))
+      341 -    } else {
+      342 -        false
+      343 -    };
+      344 -
+      345 -    // 5. Conflict resolution: idle beats working keywords
+      346 -    //    (prompt at end overrides stale "reading"/"writing" in scrollback)
+      332      if is_idle {
+      333          return AgentStatus::Idle;
+      334      }
+      350 -    if is_working {
+      351 -        return AgentStatus::Working;
+      335 +
+      336 +    // 3. Rate limit — only checked if NOT idle. Broad patterns are fine
+      337 +    //    here because we've already ruled out idle agents (whose scrollback
+      338 +    //    might contain "rate limit" in conversation prose).
+      339 +    for pat in &patterns.rate_limit {
+      340 +        if last_50.contains(pat) {
+      341 +            return AgentStatus::RateLimited;
+      342 +        }
+      343      }
+      344
+      354 -    // 6. Error detection (last 10 lines)
+      345 +    // 4. Working detection (CC spinner patterns in last 20 lines)
+      346 +    if *agent_type == AgentType::Cc {
+      347 +        if CC_SPINNER_OUTPUT.iter().any(|re| re.is_match(&last_20)) {
+      348 +            return AgentStatus::Working;
+      349 +        }
+      350 +    }
+      351 +
+      352 +    // 5. Error detection (last 10 lines) — only if not idle
+      353      for pat in &patterns.error {
+      354          if last_10.contains(pat) {
+      355              return AgentStatus::Error;
+      356          }
+      357      }
+      358
+      361 -    // 7. If there's content but no prompt and no spinner, assume working
+      359 +    // 6. If there's content but no prompt and no spinner, assume working
+      360      //    (output is streaming, hasn't settled to a prompt yet)
+      361      if !output.trim().is_empty() {
+      362          return AgentStatus::Working;
+
+⏺ Bash(cd /Users/tdavies/dev/tdavies/agent-tmux-tools && cargo build --release --quiet 2>&1 | grep "^error"
+       ; cp target/release/ta ~/.local/bin/ta && echo "Installed")
+  ⎿  Installed
+  ⎿  Shell cwd was reset to /Users/tdavies/dev/active/agent-flywheel/ntm
+  ⎿  (timeout 3m)
+
+⏺ The key change: idle is checked first, before rate-limit or error. If the agent has a prompt visible and
+  no active spinner, it's idle — period. Rate limit and error patterns are only checked for agents that
+  aren't at a prompt, so conversation prose about "rate limits" or Error: Exit code 1 from tool output
+  won't trigger false positives.
+
+✻ Churned for 2m 20s
+
+❯ let's analyze the code base, and create tests that reflect the code reality. Also include a variety of
+scenarios for testing agent detection.. see if ntm has any. Also use this tmux collection of sessions.. I
+can put the system in a couple idle and working modes, and let's make sure these tests work.
+
+⏺ Explore(Explore ntm agent detection tests)
+  ⎿  Done (30 tool uses · 73.5k tokens · 53s)
+  (ctrl+o to expand)
+
+⏺ Good research. Now let me capture the actual live pane output from your sessions to build realistic test
+  fixtures.
+
+⏺ Bash(# Capture all agent panes to fixture files
+      mkdir -p /Users/tdavies/dev/tdavies/agent-tmux-tools/tests/fixtures…)
+  ⎿  Running…
+
+✽ Moseying… (1m 12s · ↓ 3.4k tokens)
+
+──────────────────────────────────────────────────────────────────────────────── tmux-agent-task-planner ──
+❯ 
+───────────────────────────────────────────────────────────────────────────────────────────────────────────
+  /Users/tdavies/dev/active/agent-flywheel/ntm  ctx:32%  opus4
+  -- INSERT -- ⏵⏵ bypass permissions on (shift+tab to cycle)
+

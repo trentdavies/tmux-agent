@@ -1,0 +1,86 @@
+# target: ap:2.0
+# title: ✳ Review PR design flaws and proposals
+# command: zsh
+# pid: 70527
+---
+
+  4. All Grant Types on One Client = Large Attack Surface
+
+  Line 526: One client has implicit, auth code, refresh token, AND cluster_at_exchange enabled. Best
+  practice is separate clients for separate trust boundaries. The browser SPA, the CLI, and the cloud
+  backend have fundamentally different security profiles.
+
+  ---
+  Areas to Investigate
+
+  5. Token Forwarding = Full User Privileges
+
+  AO forwards the user's token verbatim to AEP, meaning AO operates with the user's full permissions. If
+  AO has any vulnerability (SSRF, injection, dependency compromise), the attacker gets everything the user
+   has in AEP. There's no principle of least privilege. Investigate whether AO should request a downscoped
+   token with only the specific AEP permissions it needs.
+
+  6. Cloud Org Switch Makes AO a Token Broker
+
+  Lines 336-341: The cloud org-switch flow has AO receiving a fresh token from IMS and returning it in a
+  JSON response body. This contradicts the "AO never stores tokens" claim (it transits AO's memory), and
+  the response body could be logged by any middleware, proxy, or observability tool in the chain. AO is no
+   longer a pure forwarder — it's minting tokens on behalf of users.
+
+  7. JWKS Cache Strategy is Undefined
+
+  "Cached public keys" (line 71) without specifying: cache TTL, rotation handling, what happens on cache
+  miss during key rotation, behavior if IMS JWKS endpoint is unreachable at startup. A bad caching
+  strategy means either stale keys (rejecting valid tokens after rotation) or constant network calls
+  (defeating the "offline" validation goal).
+
+  8. Session Storage + Multi-Tab Behavior
+
+  Session storage is per-tab. Two tabs = two independent token lifecycles. Org switching in tab A doesn't
+  affect tab B. User could unknowingly operate on different orgs in different tabs. This is a UX trap.
+  Investigate whether BroadcastChannel or localStorage events should sync auth state across tabs.
+
+  9. "Stateless Backend" vs Actual State Requirements
+
+  The doc claims AO is stateless (line 28), but chat history, conversation state, and user preferences
+  must live somewhere. How is user identity linked to their session data? This design doc should at least
+  acknowledge where stateful concerns land, even if auth itself is stateless.
+
+  10. Linux Token Storage is Vague
+
+  Line 469: "encrypted with user's key, file permissions 600." What key? Derived how? This is hand-waving
+  over a real security boundary. macOS Keychain is well-defined; the Linux path needs an actual design
+  (e.g., libsecret/gnome-keyring, or age-encrypted with a passphrase).
+
+  11. Missing: Rate Limiting
+
+  AO as a credential-free proxy with no rate limiting means any valid IMS token holder can use AO as an
+  amplification point against AEP and APIM. No mention of per-user or per-token rate limits anywhere.
+
+  12. Missing: Token Revocation / Logout
+
+  ao logout clears local credentials (line 471) but doesn't revoke the token with IMS. The token remains
+  valid until expiry. For the browser, no mention of cross-tab logout or IMS session termination.
+
+  13. Refresh Token Lifetime (Terminal)
+
+  Line 475: refresh tokens last ~2 weeks. On a stolen laptop, that's a 2-week window for an attacker to
+  silently refresh access tokens from the Keychain/credential store. The doc should discuss whether
+  refresh tokens should be bound to the device or have shorter lifetimes for local use.
+
+  ---
+  Priority Recommendation
+
+  The implicit-grant deprecation (#1) and missing audience validation (#2) are the two I'd fix before this
+   design gets implemented. The single-client-for-everything issue (#3/#4) will be painful to fix later.
+  The rest are worth discussing but less likely to bite you at launch.
+
+✻ Sautéed for 1m 22s
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ~/dev/active/agent-platform-repos/sessions/agents/prs  ctx:3%  opus4
+  -- INSERT -- ⏸ plan mode on (shift+tab to cycle)
+
+
