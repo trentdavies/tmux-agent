@@ -292,10 +292,15 @@ pub fn task_from_title(title: &str) -> Option<String> {
 
 /// Detect agent status from captured pane output.
 ///
-/// Strategy: check the LAST FEW LINES for idle/prompt patterns first (most
-/// reliable — if a prompt is at the bottom, the agent is idle regardless of
-/// what appears earlier in the buffer). Then check recent lines for
-/// rate-limit/error/working signals.
+/// Follows ntm's approach:
+/// 1. Rate limit: check last 50 lines (stale rate limits fade out)
+/// 2. Idle: check last 12 lines for prompt patterns (Claude Code's TUI has
+///    a status bar 5-8 lines below the prompt, so we need a wide window)
+/// 3. Spinner override: if idle AND an active spinner pattern is present in
+///    the same window, the agent is WORKING (spinner beats stale prompt)
+/// 4. Working: check last 20 lines for working keywords
+/// 5. Conflict: idle beats working (prompt at end overrides stale keywords)
+/// 6. Error: check last 10 lines
 pub fn status_from_output(agent_type: &AgentType, output: &str) -> AgentStatus {
     let patterns = match agent_type {
         AgentType::Cc => &*CC_STATUS,
@@ -303,56 +308,67 @@ pub fn status_from_output(agent_type: &AgentType, output: &str) -> AgentStatus {
         _ => return AgentStatus::Unknown,
     };
 
-    // Get the last non-empty lines for prompt detection
-    let lines: Vec<&str> = output.lines().collect();
-    let tail: Vec<&str> = lines
-        .iter()
-        .rev()
-        .filter(|l| !l.trim().is_empty())
-        .take(5)
-        .copied()
-        .collect();
-    let tail_text = tail.join("\n");
+    let last_50 = get_last_n_lines(output, 50);
+    let last_20 = get_last_n_lines(output, 20);
+    let last_10 = get_last_n_lines(output, 10);
+    // Both Claude Code and Codex have TUI status bars below the prompt.
+    // Use a wide window (12 lines) for all agents to catch the prompt.
+    let idle_window = get_last_n_lines(output, 12);
 
-    // 1. Check tail for idle prompt — most authoritative signal.
-    //    If the last visible line is a prompt, the agent is idle.
-    for re in &patterns.idle {
-        if re.is_match(&tail_text) {
-            return AgentStatus::Idle;
+    // 1. Idle detection FIRST — if there's a prompt visible, the agent
+    //    is idle regardless of what keywords appear in scrollback.
+    let is_idle = patterns.idle.iter().any(|re| re.is_match(&idle_window));
+
+    // 2. Spinner override (CC only): if idle AND an active spinner is
+    //    present, the agent is working. The spinner ("Kneading… (5m 50s)")
+    //    appears below the ❯ prompt in Claude Code's TUI.
+    if is_idle && *agent_type == AgentType::Cc {
+        let has_spinner = CC_SPINNER_OUTPUT.iter().any(|re| re.is_match(&idle_window));
+        if has_spinner {
+            return AgentStatus::Working;
         }
+        return AgentStatus::Idle;
+    }
+    if is_idle {
+        return AgentStatus::Idle;
     }
 
-    // 2. Check tail for rate limit (these appear at the bottom when active)
+    // 3. Rate limit — only checked if NOT idle. Broad patterns are fine
+    //    here because we've already ruled out idle agents (whose scrollback
+    //    might contain "rate limit" in conversation prose).
     for pat in &patterns.rate_limit {
-        if tail_text.contains(pat) {
+        if last_50.contains(pat) {
             return AgentStatus::RateLimited;
         }
     }
 
-    // 3. Check tail for errors
+    // 4. Working detection (CC spinner patterns in last 20 lines)
+    if *agent_type == AgentType::Cc {
+        if CC_SPINNER_OUTPUT.iter().any(|re| re.is_match(&last_20)) {
+            return AgentStatus::Working;
+        }
+    }
+
+    // 5. Error detection (last 10 lines) — only if not idle
     for pat in &patterns.error {
-        if tail_text.contains(pat) {
+        if last_10.contains(pat) {
             return AgentStatus::Error;
         }
     }
 
-    // 4. Check tail for active spinner patterns (CC only)
-    if *agent_type == AgentType::Cc {
-        for re in &*CC_SPINNER_OUTPUT {
-            if re.is_match(&tail_text) {
-                return AgentStatus::Working;
-            }
-        }
-    }
-
-    // 5. If none of the above matched, the agent is probably working
-    //    (output is streaming and hasn't settled to a prompt yet).
-    //    But only if there's actual content in the tail.
-    if !tail.is_empty() {
+    // 6. If there's content but no prompt and no spinner, assume working
+    //    (output is streaming, hasn't settled to a prompt yet)
+    if !output.trim().is_empty() {
         return AgentStatus::Working;
     }
 
     AgentStatus::Unknown
+}
+
+fn get_last_n_lines(s: &str, n: usize) -> String {
+    let lines: Vec<&str> = s.lines().collect();
+    let start = lines.len().saturating_sub(n);
+    lines[start..].join("\n")
 }
 
 /// Best-effort status from output patterns.
@@ -379,13 +395,15 @@ static CC_SPINNER_OUTPUT: LazyLock<Vec<Regex>> = LazyLock::new(|| {
 
 static CC_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
     idle: vec![
-        Regex::new(r">\s*$").unwrap(),
-        Regex::new(r"(?m)^>\s*").unwrap(),
+        Regex::new(r"❯\s*$").unwrap(),                    // Claude Code prompt
+        Regex::new(r">\s*$").unwrap(),                     // Generic prompt
+        Regex::new(r"(?m)^>\s*$").unwrap(),                // Prompt on its own line
         Regex::new(r"Human:\s*$").unwrap(),
         Regex::new(r"\?\s*$").unwrap(),
         Regex::new(r"(?i)claude\s+code\s+v[\d.]+").unwrap(),
         Regex::new(r"(?i)welcome\s+back").unwrap(),
         Regex::new(r"╰─>\s*$").unwrap(),
+        Regex::new(r"-- INSERT --").unwrap(),              // Claude Code status bar (TUI idle)
         Regex::new(r"(?m)❯[\s\u{00a0}]*$").unwrap(),
     ],
     error: vec![
