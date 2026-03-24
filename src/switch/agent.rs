@@ -74,8 +74,7 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
         });
     }
 
-    // Capture only the visible pane area, strip leading blank lines
-    let preview_cmd = "tmux capture-pane -p -t {} | sed '/./,$!d'";
+    let preview_cmd = "tmux capture-pane -p -t {}";
 
     if let Some(target) = run_picker(items, Some(preview_cmd)) {
         switch_to(client, &target).await?;

@@ -300,6 +300,11 @@ pub fn status_from_title(title: &str) -> Option<AgentStatus> {
 }
 
 /// Detect agent status from captured pane output.
+///
+/// Strategy: check the LAST FEW LINES for idle/prompt patterns first (most
+/// reliable — if a prompt is at the bottom, the agent is idle regardless of
+/// what appears earlier in the buffer). Then check recent lines for
+/// rate-limit/error/working signals.
 pub fn status_from_output(agent_type: &AgentType, output: &str) -> AgentStatus {
     let patterns = match agent_type {
         AgentType::Cc => &*CC_STATUS,
@@ -307,47 +312,61 @@ pub fn status_from_output(agent_type: &AgentType, output: &str) -> AgentStatus {
         _ => return AgentStatus::Unknown,
     };
 
-    // Priority: rate limit > error > working > idle
+    // Get the last non-empty lines for prompt detection
+    let lines: Vec<&str> = output.lines().collect();
+    let tail: Vec<&str> = lines
+        .iter()
+        .rev()
+        .filter(|l| !l.trim().is_empty())
+        .take(5)
+        .copied()
+        .collect();
+    let tail_text = tail.join("\n");
+
+    // 1. Check tail for idle prompt — most authoritative signal.
+    //    If the last visible line is a prompt, the agent is idle.
+    for re in &patterns.idle {
+        if re.is_match(&tail_text) {
+            return AgentStatus::Idle;
+        }
+    }
+
+    // 2. Check tail for rate limit (these appear at the bottom when active)
     for pat in &patterns.rate_limit {
-        if output.contains(pat) {
+        if tail_text.contains(pat) {
             return AgentStatus::RateLimited;
         }
     }
+
+    // 3. Check tail for errors
     for pat in &patterns.error {
-        if output.contains(pat) {
+        if tail_text.contains(pat) {
             return AgentStatus::Error;
         }
     }
+
+    // 4. Check tail for active spinner patterns (CC only)
     if *agent_type == AgentType::Cc {
         for re in &*CC_SPINNER_OUTPUT {
-            if re.is_match(output) {
+            if re.is_match(&tail_text) {
                 return AgentStatus::Working;
             }
         }
     }
-    for pat in &patterns.working {
-        if output.contains(pat) {
-            return AgentStatus::Working;
-        }
+
+    // 5. If none of the above matched, the agent is probably working
+    //    (output is streaming and hasn't settled to a prompt yet).
+    //    But only if there's actual content in the tail.
+    if !tail.is_empty() {
+        return AgentStatus::Working;
     }
-    for re in &patterns.idle {
-        if re.is_match(output) {
-            return AgentStatus::Idle;
-        }
-    }
+
     AgentStatus::Unknown
 }
 
-/// Best-effort status combining title and output signals.
-pub fn detect_status(agent_type: &AgentType, title: &str, output: &str) -> AgentStatus {
-    if let Some(AgentStatus::Working) = status_from_title(title) {
-        return AgentStatus::Working;
-    }
-    let s = status_from_output(agent_type, output);
-    if s == AgentStatus::Unknown && !title.is_empty() && !title.contains('.') {
-        return AgentStatus::Idle;
-    }
-    s
+/// Best-effort status from output patterns.
+pub fn detect_status(agent_type: &AgentType, _title: &str, output: &str) -> AgentStatus {
+    status_from_output(agent_type, output)
 }
 
 // ─── Status patterns ────────────────────────────────────────────────────────

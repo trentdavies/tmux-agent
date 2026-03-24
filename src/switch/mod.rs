@@ -57,7 +57,14 @@ pub fn run_picker(items: Vec<PickerItem>, preview_cmd: Option<&str>) -> Option<S
     }
 
     let mut options = SkimOptionsBuilder::default();
-    options.height(Some("100%")).multi(false).reverse(true);
+    options
+        .height(Some("100%"))
+        .multi(false)
+        .reverse(true)
+        .bind(vec![
+            "shift-up:preview-up",
+            "shift-down:preview-down",
+        ]);
 
     if let Some(cmd) = preview_cmd {
         options.preview(Some(cmd));
