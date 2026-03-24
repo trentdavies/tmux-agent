@@ -22,7 +22,6 @@ pub async fn switch_session(client: &TmuxClient) -> Result<(), TaError> {
             PickerItem {
                 display,
                 output: s.name.clone(),
-                preview_target: Some(s.name.clone()),
             }
         })
         .collect();

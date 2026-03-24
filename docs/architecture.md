@@ -19,7 +19,7 @@ ta is a stateless CLI tool that queries live tmux state on every invocation. The
 │  window      │  session   (queries)         │
 │  pane        │  pane      (types + naming)  │
 │  worktree    │  capture   (output capture)  │
-│  (skim TUI)  │  keys      (send-keys)      │
+│  (skim TUI)  │                              │
 └──────────────┴──────────────────────────────┘
 ```
 

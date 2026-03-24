@@ -64,7 +64,6 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
             PickerItem {
                 display,
                 output: wt.path.clone(),
-                preview_target: Some(wt.path.clone()),
             }
         })
         .collect();

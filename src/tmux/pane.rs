@@ -53,24 +53,6 @@ impl AgentType {
             Self::Other(s) => s,
         }
     }
-
-    pub fn display_name(&self) -> &str {
-        match self {
-            Self::Cc => "Claude Code",
-            Self::Cod => "Codex",
-            Self::Gmi => "Gemini",
-            Self::Cursor => "Cursor",
-            Self::Windsurf => "Windsurf",
-            Self::Aider => "Aider",
-            Self::Ollama => "Ollama",
-            Self::User => "shell",
-            Self::Other(s) => s,
-        }
-    }
-
-    pub fn is_agent(&self) -> bool {
-        !matches!(self, Self::User)
-    }
 }
 
 impl fmt::Display for AgentType {
@@ -158,21 +140,6 @@ pub fn detect_agent_from_command(cmd: &str) -> AgentType {
     }
 }
 
-/// Format a pane name following the naming convention.
-pub fn format_pane_name(
-    session: &str,
-    agent_type: &str,
-    index: u32,
-    variant: Option<&str>,
-) -> String {
-    let mut name = format!("{}__{agent_type}_{index}", session);
-    if let Some(v) = variant {
-        name.push('_');
-        name.push_str(v);
-    }
-    name
-}
-
 /// Format tags as `[tag1,tag2]`.
 pub fn format_tags(tags: &[String]) -> String {
     if tags.is_empty() {
@@ -238,14 +205,5 @@ mod tests {
         assert_eq!(i, 0);
         assert!(v.is_none());
         assert!(tags.is_empty());
-    }
-
-    #[test]
-    fn format_name() {
-        assert_eq!(
-            format_pane_name("proj", "cc", 1, Some("opus")),
-            "proj__cc_1_opus"
-        );
-        assert_eq!(format_pane_name("proj", "cod", 2, None), "proj__cod_2");
     }
 }

@@ -32,7 +32,6 @@ src/
     pane.rs         # Pane types, naming convention parser
     session.rs      # Session/pane queries from live tmux
     capture.rs      # capture-pane wrapper
-    keys.rs         # send-keys wrapper
   switch/           # Fuzzy switchers (embedded skim)
     mod.rs          # Shared picker logic
     session.rs      # Session switcher

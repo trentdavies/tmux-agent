@@ -8,7 +8,6 @@
 - [x] src/tmux/pane.rs — Pane struct, naming convention parser, AgentType enum
 - [x] src/tmux/session.rs — Session listing, pane listing
 - [x] src/tmux/capture.rs — capture-pane wrapper
-- [x] src/tmux/keys.rs — send-keys with chunking
 - [x] src/switch/mod.rs — shared skim picker logic
 - [x] src/switch/session.rs — session switcher
 - [x] src/switch/window.rs — window switcher

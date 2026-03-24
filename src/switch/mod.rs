@@ -20,7 +20,6 @@ use crate::tmux::TmuxClient;
 pub struct PickerItem {
     pub display: String,
     pub output: String,
-    pub preview_target: Option<String>,
 }
 
 /// Strip ANSI escape codes from a string.

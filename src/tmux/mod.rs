@@ -1,6 +1,5 @@
 pub mod capture;
 pub mod client;
-pub mod keys;
 pub mod pane;
 pub mod session;
 

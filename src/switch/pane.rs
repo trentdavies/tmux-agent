@@ -34,7 +34,6 @@ pub async fn switch_pane(client: &TmuxClient) -> Result<(), TaError> {
             PickerItem {
                 display,
                 output: target.clone(),
-                preview_target: Some(target),
             }
         })
         .collect();

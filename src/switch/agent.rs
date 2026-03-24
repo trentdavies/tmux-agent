@@ -65,7 +65,6 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
         items.push(PickerItem {
             display,
             output: target.clone(),
-            preview_target: Some(target),
         });
     }
 

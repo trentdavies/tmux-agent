@@ -67,7 +67,6 @@ pub enum DetectionMethod {
     Process, // 0.95 — pane_current_command or child process
     Content, // 0.75 — output pattern matching
     Title,   // 0.60 — pane title keywords or spinner chars
-    Naming,  // 0.90 — ta naming convention (session__cc_1)
 }
 
 #[derive(Debug, Clone, Serialize)]

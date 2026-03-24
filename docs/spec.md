@@ -67,13 +67,10 @@ Error:
 | Code | Meaning |
 |------|---------|
 | `SESSION_NOT_FOUND` | Named session doesn't exist |
-| `PANE_NOT_FOUND` | Pane index out of range |
-| `INVALID_FLAG` | Bad CLI argument |
 | `TIMEOUT` | Tmux command timed out |
 | `TMUX_NOT_INSTALLED` | Can't find tmux binary |
 | `NOT_IN_TMUX` | Command requires tmux session |
 | `INTERNAL_ERROR` | Unexpected failure |
-| `CURSOR_EXPIRED` | Attention cursor outside retention window |
 
 ## Global Flags
 

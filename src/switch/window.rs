@@ -34,7 +34,6 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
             PickerItem {
                 display,
                 output: key.clone(),
-                preview_target: Some(key.clone()),
             }
         })
         .collect();
