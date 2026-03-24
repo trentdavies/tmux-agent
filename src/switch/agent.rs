@@ -9,30 +9,37 @@ use super::{git_branches, run_picker, switch_to, PickerItem};
 /// Uses multi-method detection: process tree > content > title.
 pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
     let all_panes = list_all_panes(client).await?;
-
-    // Snapshot the process table once (no shelling out)
     let sys = snapshot_processes();
 
-    // Batch-resolve git branches for all pane paths
-    let paths: Vec<String> = all_panes.iter().map(|p| p.current_path.clone()).collect();
+    // First pass: detect agents using process tree + command + title (no capture needed)
+    let mut agent_panes = Vec::new();
+    for pane in &all_panes {
+        // Try detection without output first (process + title methods)
+        if let Some(detection) =
+            detect_agent(&sys, &pane.command, pane.pid, &pane.title, "")
+        {
+            agent_panes.push((pane, detection));
+        }
+    }
+
+    if agent_panes.is_empty() {
+        println!("No agent panes found.");
+        return Ok(());
+    }
+
+    // Batch-resolve git branches only for agent pane paths
+    let paths: Vec<String> = agent_panes.iter().map(|(p, _)| p.current_path.clone()).collect();
     let branches = git_branches(&paths).await;
 
+    // Second pass: capture output only for detected agents (for status)
     let mut items: Vec<PickerItem> = Vec::new();
-
-    for pane in &all_panes {
+    for (pane, detection) in &agent_panes {
         let target = pane.target();
 
-        // Capture output for detection and status
         let output = client
             .run(&["capture-pane", "-p", "-t", &target, "-S", "-30"])
             .await
             .unwrap_or_default();
-
-        // Multi-method agent detection
-        let Some(detection) = detect_agent(&sys, &pane.command, pane.pid, &pane.title, &output)
-        else {
-            continue; // Not an agent
-        };
 
         let status = detect_status(&detection.agent_type, &pane.title, &output);
         let task = task_from_title(&pane.title).unwrap_or_default();
@@ -43,7 +50,6 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
             .map(|b| format!("[{}]", b))
             .unwrap_or_default();
 
-        // Option D: dense, no padding, everything searchable, colored status
         let mut display = format!(
             "{} {} {} {}",
             status.colored_icon(),
@@ -68,27 +74,16 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
         });
     }
 
-    if items.is_empty() {
-        println!("No agent panes found.");
-        return Ok(());
-    }
-
-    // {} is ANSI-stripped text(); $2 is the target (e.g. work:2.0)
-    let preview_cmd = "tmux capture-pane -p -t {2} 2>/dev/null || echo '(no preview)'";
+    // Capture only the visible pane area, strip leading blank lines
+    let preview_cmd = "tmux capture-pane -p -t {} | sed '/./,$!d'";
 
     if let Some(target) = run_picker(items, Some(preview_cmd)) {
-        // Strip ANSI codes to extract the target (second whitespace token)
-        let stripped = strip_ansi(&target);
-        let pane_target = stripped.split_whitespace().nth(1).unwrap_or(&stripped);
-        switch_to(client, pane_target).await?;
+        switch_to(client, &target).await?;
     }
 
     Ok(())
 }
 
-/// Compress a path for display. Keeps the last 2 segments full,
-/// truncates intermediate segments to first char.
-/// `/Users/tdavies/dev/active/agent-flywheel/ntm` → `~/d/a/agent-flywheel/ntm`
 fn compress_path(path: &str) -> String {
     let path = tilde_path(path);
     let parts: Vec<&str> = path.split('/').collect();
@@ -97,9 +92,7 @@ fn compress_path(path: &str) -> String {
         return path;
     }
 
-    // Keep first segment (~ or empty for /) and last 2 segments full.
-    // Compress everything in between to first char.
-    let first = parts[0]; // "~" or ""
+    let first = parts[0];
     let middle = &parts[1..parts.len() - 2];
     let last_two = &parts[parts.len() - 2..];
 
@@ -131,7 +124,3 @@ fn tilde_path(path: &str) -> String {
     path.to_string()
 }
 
-fn strip_ansi(s: &str) -> String {
-    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
-    re.replace_all(s, "").to_string()
-}
