@@ -31,6 +31,12 @@ Set up tmux keybindings for popup switchers.
 ### `ta shell <zsh|bash>`
 Generate shell integration script with aliases.
 
+### `ta --version`
+Report the build version derived from git state.
+- exact `vX.Y.Z` tag: `X.Y.Z`
+- ahead of tag: `X.Y.Z-dev.<commits>+g<hash>`
+- dirty worktree: append `.dirty`
+
 ## Response Envelope
 
 All structured output uses this format:
@@ -39,7 +45,7 @@ All structured output uses this format:
 {
   "success": true,
   "timestamp": "2026-03-24T15:30:45+00:00",
-  "version": "1.0.0",
+  "version": "0.1.0-dev.3+gabc1234.dirty",
   "data": { ... }
 }
 ```
@@ -49,7 +55,7 @@ Error:
 {
   "success": false,
   "timestamp": "2026-03-24T15:30:45+00:00",
-  "version": "1.0.0",
+  "version": "0.1.0-dev.3+gabc1234.dirty",
   "error": "session not found: foo",
   "error_code": "SESSION_NOT_FOUND",
   "hint": "Use 'ta session list' to see available sessions"

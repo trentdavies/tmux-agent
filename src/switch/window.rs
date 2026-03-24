@@ -1,8 +1,8 @@
 use crate::error::TaError;
-use crate::tmux::TmuxClient;
 use crate::tmux::session::list_all_panes;
+use crate::tmux::TmuxClient;
 
-use super::{PickerItem, run_picker, switch_to};
+use super::{run_picker, switch_to, PickerItem};
 
 pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
     let panes = list_all_panes(client).await?;
@@ -20,10 +20,7 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
         .map(|(key, panes)| {
             let pane_labels: Vec<String> = panes.iter().map(|p| p.label()).collect();
             let pane_count = panes.len();
-            let window_title = panes
-                .first()
-                .map(|p| p.title.clone())
-                .unwrap_or_default();
+            let window_title = panes.first().map(|p| p.title.clone()).unwrap_or_default();
 
             let display = format!(
                 "{:<16} {:<14} {} pane{}  [{}]",

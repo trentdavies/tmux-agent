@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use crate::error::TaError;
-use crate::tmux::TmuxClient;
 use crate::tmux::session::list_all_panes;
+use crate::tmux::TmuxClient;
 
-use super::{PickerItem, run_picker, switch_to};
+use super::{run_picker, switch_to, PickerItem};
 
 /// Worktree switcher — replaces wt() from zshrc.
 /// Lists worktrees from the current repo, jumps to an existing window
@@ -15,13 +15,13 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
         .run(&["display-message", "-p", "#{pane_current_path}"])
         .await?;
 
-    let root = git_root(&current_path).await.ok_or_else(|| {
-        TaError::Other("Not in a git repository".to_string())
-    })?;
+    let root = git_root(&current_path)
+        .await
+        .ok_or_else(|| TaError::Other("Not in a git repository".to_string()))?;
 
-    let worktrees = list_worktrees(&root).await.ok_or_else(|| {
-        TaError::Other("Failed to list worktrees".to_string())
-    })?;
+    let worktrees = list_worktrees(&root)
+        .await
+        .ok_or_else(|| TaError::Other("Failed to list worktrees".to_string()))?;
 
     // Get all panes so we can match worktree paths to existing windows
     let panes = list_all_panes(client).await?;
@@ -82,7 +82,10 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
     );
 
     if let Some(selected_path) = run_picker(items, Some(preview_cmd)) {
-        let path = selected_path.split_whitespace().next().unwrap_or(&selected_path);
+        let path = selected_path
+            .split_whitespace()
+            .next()
+            .unwrap_or(&selected_path);
         let path = expand_tilde(path);
 
         // Jump to existing window/pane if one exists at this path
@@ -94,9 +97,7 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
         }
 
         // No existing window — create a new one in the current session
-        client
-            .run_silent(&["new-window", "-c", &path])
-            .await?;
+        client.run_silent(&["new-window", "-c", &path]).await?;
     }
 
     Ok(())
@@ -115,11 +116,7 @@ async fn git_root(path: &str) -> Option<String> {
         .ok()?;
 
     if output.status.success() {
-        Some(
-            String::from_utf8_lossy(&output.stdout)
-                .trim()
-                .to_string(),
-        )
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
         None
     }

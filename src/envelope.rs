@@ -2,8 +2,7 @@ use chrono::Utc;
 use serde::Serialize;
 
 use crate::error::{ErrorCode, TaError};
-
-const VERSION: &str = "1.0.0";
+use crate::version::VERSION;
 
 #[derive(Debug, Serialize)]
 pub struct Envelope<T: Serialize> {

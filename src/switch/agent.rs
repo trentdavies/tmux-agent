@@ -1,9 +1,9 @@
 use crate::agent::{detect_agent, detect_status, snapshot_processes, task_from_title};
 use crate::error::TaError;
-use crate::tmux::TmuxClient;
 use crate::tmux::session::list_all_panes;
+use crate::tmux::TmuxClient;
 
-use super::{PickerItem, git_branches, run_picker, switch_to};
+use super::{git_branches, run_picker, switch_to, PickerItem};
 
 /// Agent switcher — lists all detected agent panes with status.
 /// Uses multi-method detection: process tree > content > title.
@@ -29,13 +29,8 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
             .unwrap_or_default();
 
         // Multi-method agent detection
-        let Some(detection) = detect_agent(
-            &sys,
-            &pane.command,
-            pane.pid,
-            &pane.title,
-            &output,
-        ) else {
+        let Some(detection) = detect_agent(&sys, &pane.command, pane.pid, &pane.title, &output)
+        else {
             continue; // Not an agent
         };
 
@@ -79,17 +74,13 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
         return Ok(());
     }
 
-    // Preview uses the second token (target) since first is the colored icon
-    let preview_cmd =
-        "tmux capture-pane -p -t $(echo {} | sed 's/\\x1b\\[[0-9;]*m//g' | awk '{print $2}') 2>/dev/null || echo '(no preview)'";
+    // {} is ANSI-stripped text(); $2 is the target (e.g. work:2.0)
+    let preview_cmd = "tmux capture-pane -p -t {2} 2>/dev/null || echo '(no preview)'";
 
     if let Some(target) = run_picker(items, Some(preview_cmd)) {
         // Strip ANSI codes to extract the target (second whitespace token)
         let stripped = strip_ansi(&target);
-        let pane_target = stripped
-            .split_whitespace()
-            .nth(1)
-            .unwrap_or(&stripped);
+        let pane_target = stripped.split_whitespace().nth(1).unwrap_or(&stripped);
         switch_to(client, pane_target).await?;
     }
 

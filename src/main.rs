@@ -7,6 +7,7 @@ mod envelope;
 mod error;
 mod switch;
 mod tmux;
+mod version;
 
 use cli::{Cli, Command, PaneAction, SessionAction, SwitchTarget};
 use error::TaError;
@@ -189,10 +190,7 @@ async fn get_current_binding(client: &TmuxClient, key: &str) -> Option<String> {
 
 /// Save prior bindings for the given keys to prior-keys.json.
 /// Merges with any existing saved keys (doesn't overwrite unrelated entries).
-async fn save_prior_bindings(
-    client: &TmuxClient,
-    keys: &[String],
-) -> Result<(), TaError> {
+async fn save_prior_bindings(client: &TmuxClient, keys: &[String]) -> Result<(), TaError> {
     let path = prior_keys_path();
 
     // Load existing saved bindings
@@ -241,7 +239,9 @@ async fn restore_prior_bindings(
             let parts: Vec<&str> = binding_line.split_whitespace().collect();
             if parts.len() >= 2 && parts[0] == "bind-key" {
                 let args: Vec<&str> = parts[1..].to_vec();
-                let _ = client.run_silent(&[&["bind-key"], args.as_slice()].concat()).await;
+                let _ = client
+                    .run_silent(&[&["bind-key"], args.as_slice()].concat())
+                    .await;
                 restored.push(key.clone());
             }
         } else {
@@ -263,15 +263,30 @@ async fn restore_prior_bindings(
 /// Build the list of (key, subcommand) bindings from CLI args.
 fn resolve_bindings(args: &cli::BindArgs) -> Vec<(String, &'static str)> {
     if args.session {
-        vec![(args.key.clone().unwrap_or_else(|| "s".into()), "switch session")]
+        vec![(
+            args.key.clone().unwrap_or_else(|| "s".into()),
+            "switch session",
+        )]
     } else if args.window {
-        vec![(args.key.clone().unwrap_or_else(|| "w".into()), "switch window")]
+        vec![(
+            args.key.clone().unwrap_or_else(|| "w".into()),
+            "switch window",
+        )]
     } else if args.pane {
-        vec![(args.key.clone().unwrap_or_else(|| "p".into()), "switch pane")]
+        vec![(
+            args.key.clone().unwrap_or_else(|| "p".into()),
+            "switch pane",
+        )]
     } else if args.worktree {
-        vec![(args.key.clone().unwrap_or_else(|| "t".into()), "switch worktree")]
+        vec![(
+            args.key.clone().unwrap_or_else(|| "t".into()),
+            "switch worktree",
+        )]
     } else if args.agent {
-        vec![(args.key.clone().unwrap_or_else(|| "a".into()), "switch agent")]
+        vec![(
+            args.key.clone().unwrap_or_else(|| "a".into()),
+            "switch agent",
+        )]
     } else {
         // Default: bind all
         vec![
@@ -368,10 +383,7 @@ async fn run_bind(client: &TmuxClient, args: cli::BindArgs) -> Result<(), TaErro
 
         println!("Removed ta keybindings.");
         if !restored.is_empty() {
-            println!(
-                "Restored prior bindings for: {}",
-                restored.join(", ")
-            );
+            println!("Restored prior bindings for: {}", restored.join(", "));
         }
         return Ok(());
     }
@@ -408,10 +420,7 @@ fn add_source_to_tmux_conf(bindings_path: &std::path::Path) -> Result<(), TaErro
         .unwrap_or_else(|| std::path::PathBuf::from("~"))
         .join(".tmux.conf");
 
-    let source_line = format!(
-        "source-file {}",
-        bindings_path.display()
-    );
+    let source_line = format!("source-file {}", bindings_path.display());
 
     let existing = if tmux_conf.exists() {
         std::fs::read_to_string(&tmux_conf)?

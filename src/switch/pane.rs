@@ -1,9 +1,9 @@
 use crate::error::TaError;
-use crate::tmux::TmuxClient;
-use crate::tmux::session::list_all_panes;
 use crate::tmux::pane::format_tags;
+use crate::tmux::session::list_all_panes;
+use crate::tmux::TmuxClient;
 
-use super::{PickerItem, git_branches, run_picker, switch_to};
+use super::{git_branches, run_picker, switch_to, PickerItem};
 
 /// General switcher — replaces tmux-pane-finder.
 /// Shows all panes across all sessions with agent metadata, directory, and branch.

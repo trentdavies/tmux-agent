@@ -6,3 +6,5 @@ pub mod envelope;
 pub mod error;
 pub mod switch;
 pub mod tmux;
+pub mod version;
+pub mod versioning;

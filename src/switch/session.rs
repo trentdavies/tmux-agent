@@ -1,8 +1,8 @@
 use crate::error::TaError;
-use crate::tmux::TmuxClient;
 use crate::tmux::session::list_sessions;
+use crate::tmux::TmuxClient;
 
-use super::{PickerItem, run_picker, switch_to};
+use super::{run_picker, switch_to, PickerItem};
 
 pub async fn switch_session(client: &TmuxClient) -> Result<(), TaError> {
     let sessions = list_sessions(client).await?;

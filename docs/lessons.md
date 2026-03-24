@@ -2,4 +2,4 @@
 
 Things to avoid in future work on ta.
 
-(None yet — update as we learn.)
+- Do not ship a hard-coded CLI or envelope version string when the repository already has git state available at build time.

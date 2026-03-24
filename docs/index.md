@@ -17,3 +17,4 @@ Rust CLI tool for managing and monitoring AI coding agents in tmux.
 | [Phase 2: Communication](./changes/phase-2-communication/overview.md) | Planned | Send to panes, adopt sessions |
 | [Phase 3: Attention](./changes/phase-3-attention/overview.md) | Planned | Event stream, cursor-based replay |
 | [Phase 4: Alerts](./changes/phase-4-alerts/overview.md) | Planned | Alert management, health checks |
+| [Build Tooling + Versioning](./changes/build-tooling-versioning/overview.md) | In Progress | `just` workflows, release recipe, git-derived build versions |

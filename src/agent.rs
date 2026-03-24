@@ -41,11 +41,11 @@ impl AgentStatus {
     /// ANSI color code for this status.
     fn ansi_code(&self) -> &'static str {
         match self {
-            Self::Working => "\x1b[32m",      // green
-            Self::Idle => "\x1b[33m",         // yellow
-            Self::RateLimited => "\x1b[31m",  // red
-            Self::Error => "\x1b[1;31m",      // bold red
-            Self::Unknown => "\x1b[90m",      // dim gray
+            Self::Working => "\x1b[32m",     // green
+            Self::Idle => "\x1b[33m",        // yellow
+            Self::RateLimited => "\x1b[31m", // red
+            Self::Error => "\x1b[1;31m",     // bold red
+            Self::Unknown => "\x1b[90m",     // dim gray
         }
     }
 
@@ -64,10 +64,10 @@ impl AgentStatus {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DetectionMethod {
-    Process,  // 0.95 — pane_current_command or child process
-    Content,  // 0.75 — output pattern matching
-    Title,    // 0.60 — pane title keywords or spinner chars
-    Naming,   // 0.90 — ta naming convention (session__cc_1)
+    Process, // 0.95 — pane_current_command or child process
+    Content, // 0.75 — output pattern matching
+    Title,   // 0.60 — pane title keywords or spinner chars
+    Naming,  // 0.90 — ta naming convention (session__cc_1)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -153,18 +153,25 @@ pub fn snapshot_processes() -> System {
 
 static CONTENT_PATTERNS: LazyLock<Vec<(AgentType, Vec<Regex>)>> = LazyLock::new(|| {
     vec![
-        (AgentType::Cc, vec![
-            Regex::new(r"(?i)claude\s*(code|>|$)").unwrap(),
-            Regex::new(r"(?i)anthropic").unwrap(),
-            Regex::new(r"(?i)\[claude\]").unwrap(),
-        ]),
-        (AgentType::Cod, vec![
-            Regex::new(r"(?i)codex\s*(>|cli|$)").unwrap(),
-            Regex::new(r"(?i)openai\s+codex").unwrap(),
-        ]),
-        (AgentType::Gmi, vec![
-            Regex::new(r"(?i)gemini\s*(>|cli|$)").unwrap(),
-        ]),
+        (
+            AgentType::Cc,
+            vec![
+                Regex::new(r"(?i)claude\s*(code|>|$)").unwrap(),
+                Regex::new(r"(?i)anthropic").unwrap(),
+                Regex::new(r"(?i)\[claude\]").unwrap(),
+            ],
+        ),
+        (
+            AgentType::Cod,
+            vec![
+                Regex::new(r"(?i)codex\s*(>|cli|$)").unwrap(),
+                Regex::new(r"(?i)openai\s+codex").unwrap(),
+            ],
+        ),
+        (
+            AgentType::Gmi,
+            vec![Regex::new(r"(?i)gemini\s*(>|cli|$)").unwrap()],
+        ),
     ]
 });
 
@@ -186,9 +193,8 @@ fn detect_from_content(output: &str) -> Option<AgentDetection> {
 // ─── Title-based detection ──────────────────────────────────────────────────
 
 /// Spinner chars Claude Code uses in pane titles when working.
-static TITLE_SPINNER_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[\u{2800}-\u{28FF}✳◐◑◒◓]").unwrap()
-});
+static TITLE_SPINNER_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[\u{2800}-\u{28FF}✳◐◑◒◓]").unwrap());
 
 /// Title contains an agent keyword.
 fn detect_from_title_keyword(title: &str) -> Option<AgentDetection> {
@@ -354,18 +360,29 @@ struct StatusPatterns {
     rate_limit: Vec<&'static str>,
 }
 
-static CC_SPINNER_OUTPUT: LazyLock<Vec<Regex>> = LazyLock::new(|| vec![
-    Regex::new(r"\S+…\s+\(").unwrap(),
-    Regex::new(r"·\s*thinking").unwrap(),
-    Regex::new(r"·\s*thought\s+for").unwrap(),
-    Regex::new(r"Running…").unwrap(),
-]);
+static CC_SPINNER_OUTPUT: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    vec![
+        Regex::new(r"\S+…\s+\(").unwrap(),
+        Regex::new(r"·\s*thinking").unwrap(),
+        Regex::new(r"·\s*thought\s+for").unwrap(),
+        Regex::new(r"Running…").unwrap(),
+    ]
+});
 
 static CC_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
     working: vec![
-        "```", "writing to ", "created ", "updated ", "deleted ",
-        "reading ", "searching ", "running ", "executing ",
-        "installing ", "building ", "compiling ",
+        "```",
+        "writing to ",
+        "created ",
+        "updated ",
+        "deleted ",
+        "reading ",
+        "searching ",
+        "running ",
+        "executing ",
+        "installing ",
+        "building ",
+        "compiling ",
     ],
     idle: vec![
         Regex::new(r">\s*$").unwrap(),
@@ -378,18 +395,34 @@ static CC_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
         Regex::new(r"(?m)❯[\s\u{00a0}]*$").unwrap(),
     ],
     error: vec![
-        "error:", "Error:", "ERROR", "panic:", "fatal:", "FATAL",
+        "error:",
+        "Error:",
+        "ERROR",
+        "panic:",
+        "fatal:",
+        "FATAL",
         "unhandled exception",
     ],
     rate_limit: vec![
-        "rate limit", "Rate limit", "429", "too many requests", "overloaded",
+        "rate limit",
+        "Rate limit",
+        "429",
+        "too many requests",
+        "overloaded",
     ],
 });
 
 static COD_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
     working: vec![
-        "```", "editing ", "creating ", "reading ", "running ",
-        "applying ", "searching ", "writing ", "deleting ",
+        "```",
+        "editing ",
+        "creating ",
+        "reading ",
+        "running ",
+        "applying ",
+        "searching ",
+        "writing ",
+        "deleting ",
     ],
     idle: vec![
         Regex::new(r">\s*$").unwrap(),

@@ -52,10 +52,7 @@ impl SkimItem for PickerItem {
 
 /// Run the skim picker with the given items and optional preview command.
 /// Returns the selected item's output string, or None if the user cancelled.
-pub fn run_picker(
-    items: Vec<PickerItem>,
-    preview_cmd: Option<&str>,
-) -> Option<String> {
+pub fn run_picker(items: Vec<PickerItem>, preview_cmd: Option<&str>) -> Option<String> {
     if items.is_empty() {
         return None;
     }
@@ -90,9 +87,7 @@ pub fn run_picker(
 
 /// Switch tmux client to the given target.
 pub async fn switch_to(client: &TmuxClient, target: &str) -> Result<(), TaError> {
-    client
-        .run_silent(&["switch-client", "-t", target])
-        .await
+    client.run_silent(&["switch-client", "-t", target]).await
 }
 
 /// Get the git branch for a directory path. Returns None if not a git repo.
@@ -104,11 +99,7 @@ pub async fn git_branch(path: &str) -> Option<String> {
         .ok()?;
 
     if output.status.success() {
-        Some(
-            String::from_utf8_lossy(&output.stdout)
-                .trim()
-                .to_string(),
-        )
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
         None
     }

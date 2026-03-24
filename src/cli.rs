@@ -1,7 +1,14 @@
-use clap::{Parser, Subcommand, Args};
+use clap::{Args, Parser, Subcommand};
+
+use crate::version;
 
 #[derive(Parser)]
-#[command(name = "ta", about = "Tmux Agent TAsks — manage and monitor AI agents in tmux")]
+#[command(
+    name = "ta",
+    version = version::VERSION,
+    long_version = version::LONG_VERSION,
+    about = "Tmux Agent TAsks — manage and monitor AI agents in tmux"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

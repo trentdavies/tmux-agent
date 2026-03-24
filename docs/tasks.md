@@ -16,6 +16,13 @@ See [phase-1 tasks](./changes/phase-1-core-and-switching/tasks.md) for details.
 - [ ] Send to panes (targeting by index, agent type, broadcast)
 - [ ] Adopt pre-existing sessions
 
+## Build Tooling + Versioning
+
+- [x] Add a repository `justfile`
+- [x] Add build-time git-derived version strings for CLI and envelopes
+- [x] Add a release workflow that creates `vX.Y.Z` tags
+- [ ] Manual release validation against a disposable version bump
+
 ## Phase 3: Attention
 
 - [ ] Event types and envelope
