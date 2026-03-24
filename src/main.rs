@@ -270,6 +270,8 @@ fn resolve_bindings(args: &cli::BindArgs) -> Vec<(String, &'static str)> {
         vec![(args.key.clone().unwrap_or_else(|| "p".into()), "switch pane")]
     } else if args.worktree {
         vec![(args.key.clone().unwrap_or_else(|| "t".into()), "switch worktree")]
+    } else if args.agent {
+        vec![(args.key.clone().unwrap_or_else(|| "a".into()), "switch agent")]
     } else {
         // Default: bind all
         vec![
@@ -277,6 +279,7 @@ fn resolve_bindings(args: &cli::BindArgs) -> Vec<(String, &'static str)> {
             ("w".into(), "switch window"),
             ("p".into(), "switch"),
             ("t".into(), "switch worktree"),
+            ("a".into(), "switch agent"),
         ]
     }
 }

@@ -8,12 +8,14 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use skim::prelude::*;
+use skim::{AnsiString, DisplayContext};
 
 use crate::error::TaError;
 use crate::tmux::TmuxClient;
 
 /// A generic item for the skim picker.
-/// `display` is what the user sees, `output` is the value returned on selection.
+/// `display` is what the user sees (may contain ANSI color codes),
+/// `output` is the value returned on selection.
 #[derive(Clone)]
 pub struct PickerItem {
     pub display: String,
@@ -21,9 +23,22 @@ pub struct PickerItem {
     pub preview_target: Option<String>,
 }
 
+/// Strip ANSI escape codes from a string.
+fn strip_ansi(s: &str) -> String {
+    static RE: std::sync::LazyLock<regex::Regex> =
+        std::sync::LazyLock::new(|| regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap());
+    RE.replace_all(s, "").to_string()
+}
+
 impl SkimItem for PickerItem {
+    /// Plain text for fuzzy matching (ANSI stripped).
     fn text(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.display)
+        Cow::Owned(strip_ansi(&self.display))
+    }
+
+    /// Rendered display with ANSI colors parsed.
+    fn display<'a>(&'a self, _context: DisplayContext<'a>) -> AnsiString<'a> {
+        AnsiString::parse(&self.display)
     }
 
     fn output(&self) -> Cow<'_, str> {
@@ -31,8 +46,6 @@ impl SkimItem for PickerItem {
     }
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
-        // Preview is handled by the preview command in skim options,
-        // but we can provide inline preview for simple cases.
         ItemPreview::Global
     }
 }

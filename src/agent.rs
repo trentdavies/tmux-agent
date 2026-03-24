@@ -37,6 +37,27 @@ impl AgentStatus {
             Self::Unknown => "unknown",
         }
     }
+
+    /// ANSI color code for this status.
+    fn ansi_code(&self) -> &'static str {
+        match self {
+            Self::Working => "\x1b[32m",      // green
+            Self::Idle => "\x1b[33m",         // yellow
+            Self::RateLimited => "\x1b[31m",  // red
+            Self::Error => "\x1b[1;31m",      // bold red
+            Self::Unknown => "\x1b[90m",      // dim gray
+        }
+    }
+
+    /// Icon with ANSI color.
+    pub fn colored_icon(&self) -> String {
+        format!("{}{}\x1b[0m", self.ansi_code(), self.icon())
+    }
+
+    /// Label with ANSI color.
+    pub fn colored_label(&self) -> String {
+        format!("{}{}\x1b[0m", self.ansi_code(), self.label())
+    }
 }
 
 /// How the agent type was detected, with confidence.

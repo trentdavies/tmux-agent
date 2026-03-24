@@ -104,6 +104,10 @@ pub struct BindArgs {
     #[arg(long)]
     pub worktree: bool,
 
+    /// Bind agent switcher
+    #[arg(long)]
+    pub agent: bool,
+
     /// Remove all ta bindings
     #[arg(long)]
     pub unbind: bool,
