@@ -54,7 +54,7 @@ cargo clippy         # Lint
 - **Pane naming convention**: `{session}__{type}_{index}[_{variant}][tags]` (from ntm)
 - **Embedded skim**: fuzzy picker runs in-process, no fzf dependency
 - **JSON envelope**: all structured output wrapped in `Envelope<T>` with error codes + hints
-- **Feature-gated agent detection**: `--features agent-detect` for per-agent-type state inference
+- **Agent detection**: multi-method (process tree, content, title) via sysinfo + regex
 
 ## Git
 

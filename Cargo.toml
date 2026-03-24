@@ -24,6 +24,3 @@ thiserror = "2"
 tokio = { version = "1", features = ["process", "time", "rt-multi-thread", "macros", "sync"] }
 uuid = { version = "1", features = ["v4"] }
 
-[features]
-default = []
-agent-detect = []

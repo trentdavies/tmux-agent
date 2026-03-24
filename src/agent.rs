@@ -290,15 +290,6 @@ pub fn task_from_title(title: &str) -> Option<String> {
     }
 }
 
-/// Detect whether the pane title indicates working (spinner prefix).
-pub fn status_from_title(title: &str) -> Option<AgentStatus> {
-    if TITLE_SPINNER_RE.is_match(title.trim()) {
-        Some(AgentStatus::Working)
-    } else {
-        None
-    }
-}
-
 /// Detect agent status from captured pane output.
 ///
 /// Strategy: check the LAST FEW LINES for idle/prompt patterns first (most
@@ -372,7 +363,6 @@ pub fn detect_status(agent_type: &AgentType, _title: &str, output: &str) -> Agen
 // ─── Status patterns ────────────────────────────────────────────────────────
 
 struct StatusPatterns {
-    working: Vec<&'static str>,
     idle: Vec<Regex>,
     error: Vec<&'static str>,
     rate_limit: Vec<&'static str>,
@@ -388,20 +378,6 @@ static CC_SPINNER_OUTPUT: LazyLock<Vec<Regex>> = LazyLock::new(|| {
 });
 
 static CC_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
-    working: vec![
-        "```",
-        "writing to ",
-        "created ",
-        "updated ",
-        "deleted ",
-        "reading ",
-        "searching ",
-        "running ",
-        "executing ",
-        "installing ",
-        "building ",
-        "compiling ",
-    ],
     idle: vec![
         Regex::new(r">\s*$").unwrap(),
         Regex::new(r"(?m)^>\s*").unwrap(),
@@ -431,17 +407,6 @@ static CC_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
 });
 
 static COD_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
-    working: vec![
-        "```",
-        "editing ",
-        "creating ",
-        "reading ",
-        "running ",
-        "applying ",
-        "searching ",
-        "writing ",
-        "deleting ",
-    ],
     idle: vec![
         Regex::new(r">\s*$").unwrap(),
         Regex::new(r"\?\s*for\s*shortcuts").unwrap(),

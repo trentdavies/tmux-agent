@@ -501,6 +501,7 @@ if [[ -n "$TMUX" ]]; then
   tw()  {{ tmux display-popup -E -w 80% -h 60% "{bin} switch window"; }}
   tp()  {{ tmux display-popup -E -w 80% -h 60% "{bin} switch pane"; }}
   twt() {{ tmux display-popup -E -w 80% -h 60% "{bin} switch worktree"; }}
+  taa() {{ tmux display-popup -E -w 80% -h 60% "{bin} switch agent"; }}
 else
   ts()  {{ {bin} switch; }}
   tss() {{ {bin} switch session; }}
@@ -510,6 +511,7 @@ else
     local dir
     dir=$({bin} switch worktree 2>/dev/null) && [[ -n "$dir" ]] && cd "$dir"
   }}
+  taa() {{ {bin} switch agent; }}
 fi
 "#,
         bin = bin
@@ -528,6 +530,7 @@ if [[ -n "$TMUX" ]]; then
   tw()  {{ tmux display-popup -E -w 80% -h 60% "{bin} switch window"; }}
   tp()  {{ tmux display-popup -E -w 80% -h 60% "{bin} switch pane"; }}
   twt() {{ tmux display-popup -E -w 80% -h 60% "{bin} switch worktree"; }}
+  taa() {{ tmux display-popup -E -w 80% -h 60% "{bin} switch agent"; }}
 else
   ts()  {{ {bin} switch; }}
   tss() {{ {bin} switch session; }}
@@ -537,6 +540,7 @@ else
     local dir
     dir=$({bin} switch worktree 2>/dev/null) && [[ -n "$dir" ]] && cd "$dir"
   }}
+  taa() {{ {bin} switch agent; }}
 fi
 "#,
         bin = bin

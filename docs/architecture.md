@@ -60,5 +60,5 @@ Fallback: if title doesn't match, detect agent type from `pane_current_command`.
 
 - No persistent state file or database
 - All pane inventory comes from `tmux list-panes`
-- Pre-existing sessions adopted by renaming pane titles (`ta adopt`)
+- Pre-existing sessions can be adopted by renaming pane titles (planned: `ta adopt`)
 - Git worktrees discovered from pane working directories
