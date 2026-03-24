@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::error::TaError;
 use crate::tmux::TmuxClient;
@@ -7,29 +7,24 @@ use crate::tmux::session::list_all_panes;
 use super::{PickerItem, run_picker, switch_to};
 
 /// Worktree switcher — replaces wt() from zshrc.
-/// Shows all git worktrees discovered from pane working directories,
-/// cross-referenced with which panes exist at each path.
+/// Lists worktrees from the current repo, jumps to an existing window
+/// at that path or creates a new window in the current session.
 pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
+    // Get the git root of the current pane's working directory
+    let current_path = client
+        .run(&["display-message", "-p", "#{pane_current_path}"])
+        .await?;
+
+    let root = git_root(&current_path).await.ok_or_else(|| {
+        TaError::Other("Not in a git repository".to_string())
+    })?;
+
+    let worktrees = list_worktrees(&root).await.ok_or_else(|| {
+        TaError::Other("Failed to list worktrees".to_string())
+    })?;
+
+    // Get all panes so we can match worktree paths to existing windows
     let panes = list_all_panes(client).await?;
-
-    // Collect unique paths and find git roots
-    let unique_paths: HashSet<&str> = panes.iter().map(|p| p.current_path.as_str()).collect();
-
-    // For each unique path, find the git root and list worktrees
-    let mut all_worktrees: Vec<WorktreeInfo> = Vec::new();
-    let mut seen_roots: HashSet<String> = HashSet::new();
-
-    for path in &unique_paths {
-        if let Some(root) = git_root(path).await {
-            if seen_roots.insert(root.clone()) {
-                if let Some(wts) = list_worktrees(&root).await {
-                    all_worktrees.extend(wts);
-                }
-            }
-        }
-    }
-
-    // Build a map: worktree path -> panes at that path
     let mut path_to_panes: HashMap<&str, Vec<&crate::tmux::Pane>> = HashMap::new();
     for pane in &panes {
         path_to_panes
@@ -38,14 +33,13 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
             .push(pane);
     }
 
-    let items: Vec<PickerItem> = all_worktrees
+    let items: Vec<PickerItem> = worktrees
         .iter()
         .map(|wt| {
             let path_display = tilde_path(&wt.path);
             let branch_display = format!("[{}]", wt.branch);
 
-            let pane_info = if let Some(panes) = path_to_panes.get(wt.path.as_str()) {
-                // Find the window these panes are in
+            let window_info = if let Some(panes) = path_to_panes.get(wt.path.as_str()) {
                 if let Some(first) = panes.first() {
                     let count = panes.len();
                     format!(
@@ -56,18 +50,17 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
                         if count == 1 { "" } else { "s" }
                     )
                 } else {
-                    "(no window)".to_string()
+                    "(new window)".to_string()
                 }
             } else {
-                "(no window)".to_string()
+                "(new window)".to_string()
             };
 
             let display = format!(
                 "{:<40} {:<20} {}",
-                path_display, branch_display, pane_info,
+                path_display, branch_display, window_info,
             );
 
-            // Output encodes the worktree path so we can resolve later
             PickerItem {
                 display,
                 output: wt.path.clone(),
@@ -76,7 +69,7 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
         })
         .collect();
 
-    // Preview: if panes exist at the path, capture the first pane; otherwise git log
+    // Preview: capture existing pane or show git log
     let preview_cmd = concat!(
         "path=$(echo {} | awk '{print $1}'); ",
         "target=$(tmux list-panes -a -F '#{pane_current_path} #{session_name}:#{window_index}.#{pane_index}' ",
@@ -90,19 +83,17 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
 
     if let Some(selected_path) = run_picker(items, Some(preview_cmd)) {
         let path = selected_path.split_whitespace().next().unwrap_or(&selected_path);
-        // Expand tilde back
         let path = expand_tilde(path);
 
-        // Check if a pane already exists at this path
+        // Jump to existing window/pane if one exists at this path
         if let Some(panes) = path_to_panes.get(path.as_str()) {
             if let Some(first) = panes.first() {
-                let target = first.target();
-                switch_to(client, &target).await?;
+                switch_to(client, &first.target()).await?;
                 return Ok(());
             }
         }
 
-        // No existing pane — open a new window at this path
+        // No existing window — create a new one in the current session
         client
             .run_silent(&["new-window", "-c", &path])
             .await?;
@@ -155,7 +146,6 @@ async fn list_worktrees(git_root: &str) -> Option<Vec<WorktreeInfo>> {
             current_path = Some(path.to_string());
             current_branch = String::new();
         } else if let Some(branch) = line.strip_prefix("branch ") {
-            // Strip refs/heads/ prefix
             current_branch = branch
                 .strip_prefix("refs/heads/")
                 .unwrap_or(branch)
