@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod pane;
 pub mod session;
 pub mod window;

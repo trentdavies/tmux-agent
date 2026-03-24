@@ -1,6 +1,7 @@
 use clap::Parser;
 use std::process::ExitCode;
 
+mod agent;
 mod cli;
 mod envelope;
 mod error;
@@ -80,6 +81,9 @@ async fn run(cli: Cli) -> Result<(), TaError> {
                 Some(SwitchTarget::Worktree) => {
                     switch::worktree::switch_worktree(&client).await?;
                 }
+                Some(SwitchTarget::Agent) => {
+                    switch::agent::switch_agent(&client).await?;
+                }
             }
         }
 
@@ -113,6 +117,7 @@ async fn exec_in_popup(target: &Option<SwitchTarget>) -> Result<(), TaError> {
         Some(SwitchTarget::Window) => "switch window".to_string(),
         Some(SwitchTarget::Pane) => "switch pane".to_string(),
         Some(SwitchTarget::Worktree) => "switch worktree".to_string(),
+        Some(SwitchTarget::Agent) => "switch agent".to_string(),
     };
 
     let inner_cmd = format!("TA_POPUP=1 {} {}", ta_bin, subcmd);

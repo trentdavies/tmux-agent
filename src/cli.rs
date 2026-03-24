@@ -78,6 +78,8 @@ pub enum SwitchTarget {
     Pane,
     /// Switch to a git worktree
     Worktree,
+    /// Switch to an agent pane (Claude Code, Codex)
+    Agent,
 }
 
 #[derive(Args)]
