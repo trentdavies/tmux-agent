@@ -1,0 +1,21 @@
+# Phase 1 Tasks
+
+- [x] Cargo.toml with dependencies (clap, serde, tokio, skim, regex, thiserror, chrono, uuid, which, futures)
+- [x] src/error.rs — TaError enum with error codes and hints
+- [x] src/envelope.rs — Envelope<T> response wrapper
+- [x] src/cli.rs — clap subcommand definitions
+- [x] src/tmux/client.rs — TmuxClient with local/remote execution
+- [x] src/tmux/pane.rs — Pane struct, naming convention parser, AgentType enum
+- [x] src/tmux/session.rs — Session listing, pane listing
+- [x] src/tmux/capture.rs — capture-pane wrapper
+- [x] src/tmux/keys.rs — send-keys with chunking
+- [x] src/switch/mod.rs — shared skim picker logic
+- [x] src/switch/session.rs — session switcher
+- [x] src/switch/window.rs — window switcher
+- [x] src/switch/pane.rs — general pane switcher (replaces tmux-pane-finder)
+- [x] src/switch/worktree.rs — worktree switcher (replaces wt())
+- [x] ta bind command
+- [x] ta shell zsh/bash command
+- [x] AGENTS.md
+- [x] docs structure
+- [ ] Manual testing in live tmux

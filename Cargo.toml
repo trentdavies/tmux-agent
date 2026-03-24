@@ -1,0 +1,28 @@
+[package]
+name = "ta"
+version = "0.1.0"
+edition = "2021"
+description = "Tmux Agent TAsks — manage and monitor AI coding agents in tmux"
+license = "MIT"
+
+[[bin]]
+name = "ta"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+dirs-next = "2"
+clap = { version = "4", features = ["derive"] }
+futures = "0.3"
+regex = "1"
+which = "7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+skim = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["process", "time", "rt-multi-thread", "macros", "sync"] }
+uuid = { version = "1", features = ["v4"] }
+
+[features]
+default = []
+agent-detect = []
