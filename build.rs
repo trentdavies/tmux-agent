@@ -32,6 +32,17 @@ struct BuildVersion {
 }
 
 fn compute_version(manifest_dir: &Path, package_version: &str) -> BuildVersion {
+    // If git isn't available (e.g. crates.io install), emit clean release version
+    let hash = match run_git(manifest_dir, &["rev-parse", "--short=7", "HEAD"]) {
+        Some(h) => h,
+        None => {
+            return BuildVersion {
+                version: package_version.to_string(),
+                long_version: package_version.to_string(),
+            };
+        }
+    };
+
     let describe = run_git(
         manifest_dir,
         &[
@@ -49,9 +60,6 @@ fn compute_version(manifest_dir: &Path, package_version: &str) -> BuildVersion {
     let commit_count = run_git(manifest_dir, &["rev-list", "--count", "HEAD"])
         .and_then(|value| value.parse::<usize>().ok())
         .unwrap_or(0);
-
-    let hash = run_git(manifest_dir, &["rev-parse", "--short=7", "HEAD"])
-        .unwrap_or_else(|| "unknown".to_string());
 
     let git_version = describe
         .as_deref()
