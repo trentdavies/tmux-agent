@@ -1,6 +1,6 @@
 [package]
 name = "tmux-agent"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Fast tmux switcher and AI agent monitor — fuzzy-find sessions, windows, panes, worktrees, and Claude/Codex agents"
 license = "MIT"
