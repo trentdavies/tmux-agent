@@ -23,6 +23,12 @@ check:
     cargo test
     cargo clippy --all-targets --all-features
 
+install:
+    cargo install --offline --path . --locked
+
+install-dev:
+    cargo build && ln -sf $(pwd)/target/debug/workmux ~/.cargo/bin/workmux
+
 run *args:
     cargo run -- {{args}}
 
