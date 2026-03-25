@@ -1,5 +1,89 @@
-use ta::agent::*;
-use ta::tmux::pane::{self, AgentType};
+use tmux_agent::agent::*;
+use tmux_agent::tmux::pane::{self, AgentType};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Window option → status mapping
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn window_option_working_emoji() {
+    assert_eq!(status_from_window_option("🤖"), Some(AgentStatus::Working));
+}
+
+#[test]
+fn window_option_waiting_emoji() {
+    assert_eq!(status_from_window_option("💬"), Some(AgentStatus::Waiting));
+}
+
+#[test]
+fn window_option_done_emoji() {
+    assert_eq!(status_from_window_option("✅"), Some(AgentStatus::Done));
+}
+
+#[test]
+fn window_option_empty() {
+    assert_eq!(status_from_window_option(""), None);
+    assert_eq!(status_from_window_option("  "), None);
+}
+
+#[test]
+fn window_option_unknown_icon() {
+    assert_eq!(status_from_window_option("⚡"), None);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// resolve_display_status priority
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn window_option_beats_output_detection() {
+    // Output says idle (has prompt), but window option says working.
+    // Window option should win.
+    let output = "Some work done\n❯\n";
+    let status = resolve_display_status(
+        Some("🤖"),
+        &AgentType::Cc,
+        "",
+        output,
+    );
+    assert_eq!(status, AgentStatus::Working);
+}
+
+#[test]
+fn window_option_waiting_beats_idle() {
+    let output = "❯\n";
+    let status = resolve_display_status(
+        Some("💬"),
+        &AgentType::Cc,
+        "",
+        output,
+    );
+    assert_eq!(status, AgentStatus::Waiting);
+}
+
+#[test]
+fn no_window_option_falls_back_to_output() {
+    let output = "❯\n";
+    let status = resolve_display_status(
+        None,
+        &AgentType::Cc,
+        "",
+        output,
+    );
+    assert_eq!(status, AgentStatus::Idle);
+}
+
+#[test]
+fn empty_window_option_falls_back_to_output() {
+    let output = "❯\n";
+    let status = resolve_display_status(
+        Some(""),
+        &AgentType::Cc,
+        "",
+        output,
+    );
+    assert_eq!(status, AgentStatus::Idle);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Command-based detection
