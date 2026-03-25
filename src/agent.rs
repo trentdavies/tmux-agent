@@ -46,13 +46,13 @@ impl AgentStatus {
 
     fn ansi_code(&self) -> &'static str {
         match self {
-            Self::Working => "\x1b[32m",      // green
-            Self::Waiting => "\x1b[35m",      // magenta
-            Self::Done => "\x1b[36m",         // cyan
-            Self::Idle => "\x1b[33m",         // yellow
-            Self::RateLimited => "\x1b[31m",  // red
-            Self::Error => "\x1b[1;31m",      // bold red
-            Self::Unknown => "\x1b[90m",      // dim gray
+            Self::Working => "\x1b[32m",     // green
+            Self::Waiting => "\x1b[35m",     // magenta
+            Self::Done => "\x1b[36m",        // cyan
+            Self::Idle => "\x1b[33m",        // yellow
+            Self::RateLimited => "\x1b[31m", // red
+            Self::Error => "\x1b[1;31m",     // bold red
+            Self::Unknown => "\x1b[90m",     // dim gray
         }
     }
 
@@ -448,15 +448,15 @@ static CC_SPINNER_OUTPUT: LazyLock<Vec<Regex>> = LazyLock::new(|| {
 
 static CC_STATUS: LazyLock<StatusPatterns> = LazyLock::new(|| StatusPatterns {
     idle: vec![
-        Regex::new(r"❯\s*$").unwrap(),                    // Claude Code prompt
-        Regex::new(r">\s*$").unwrap(),                     // Generic prompt
-        Regex::new(r"(?m)^>\s*$").unwrap(),                // Prompt on its own line
+        Regex::new(r"❯\s*$").unwrap(),      // Claude Code prompt
+        Regex::new(r">\s*$").unwrap(),      // Generic prompt
+        Regex::new(r"(?m)^>\s*$").unwrap(), // Prompt on its own line
         Regex::new(r"Human:\s*$").unwrap(),
         Regex::new(r"\?\s*$").unwrap(),
         Regex::new(r"(?i)claude\s+code\s+v[\d.]+").unwrap(),
         Regex::new(r"(?i)welcome\s+back").unwrap(),
         Regex::new(r"╰─>\s*$").unwrap(),
-        Regex::new(r"-- INSERT --").unwrap(),              // Claude Code status bar (TUI idle)
+        Regex::new(r"-- INSERT --").unwrap(), // Claude Code status bar (TUI idle)
         Regex::new(r"(?m)❯[\s\u{00a0}]*$").unwrap(),
     ],
     error: vec![

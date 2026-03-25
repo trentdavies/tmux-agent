@@ -27,7 +27,7 @@ install:
     cargo install --offline --path . --locked
 
 install-dev:
-    cargo build && ln -sf $(pwd)/target/debug/workmux ~/.cargo/bin/workmux
+    cargo build && ln -sf $(pwd)/target/debug/ta ~/.cargo/bin/ta
 
 run *args:
     cargo run -- {{args}}

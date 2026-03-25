@@ -94,12 +94,17 @@ fn setup_claude_hooks() -> Result<Option<String>, TaError> {
     let ta_hooks_map = ta_hook_config["hooks"].as_object().unwrap();
 
     // Check if ta hooks are already installed
-    let existing_hooks = settings.get("hooks").cloned().unwrap_or(serde_json::json!({}));
+    let existing_hooks = settings
+        .get("hooks")
+        .cloned()
+        .unwrap_or(serde_json::json!({}));
     let already_installed = ta_hooks_map.iter().all(|(event, entries)| {
         if let Some(existing_entries) = existing_hooks.get(event).and_then(|v| v.as_array()) {
             let new_entries = entries.as_array().unwrap();
             new_entries.iter().all(|new_entry| {
-                existing_entries.iter().any(|existing| existing == new_entry)
+                existing_entries
+                    .iter()
+                    .any(|existing| existing == new_entry)
             })
         } else {
             false

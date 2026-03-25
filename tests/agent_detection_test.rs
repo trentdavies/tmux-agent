@@ -40,48 +40,28 @@ fn window_option_beats_output_detection() {
     // Output says idle (has prompt), but window option says working.
     // Window option should win.
     let output = "Some work done\n❯\n";
-    let status = resolve_display_status(
-        Some("🤖"),
-        &AgentType::Cc,
-        "",
-        output,
-    );
+    let status = resolve_display_status(Some("🤖"), &AgentType::Cc, "", output);
     assert_eq!(status, AgentStatus::Working);
 }
 
 #[test]
 fn window_option_waiting_beats_idle() {
     let output = "❯\n";
-    let status = resolve_display_status(
-        Some("💬"),
-        &AgentType::Cc,
-        "",
-        output,
-    );
+    let status = resolve_display_status(Some("💬"), &AgentType::Cc, "", output);
     assert_eq!(status, AgentStatus::Waiting);
 }
 
 #[test]
 fn no_window_option_falls_back_to_output() {
     let output = "❯\n";
-    let status = resolve_display_status(
-        None,
-        &AgentType::Cc,
-        "",
-        output,
-    );
+    let status = resolve_display_status(None, &AgentType::Cc, "", output);
     assert_eq!(status, AgentStatus::Idle);
 }
 
 #[test]
 fn empty_window_option_falls_back_to_output() {
     let output = "❯\n";
-    let status = resolve_display_status(
-        Some(""),
-        &AgentType::Cc,
-        "",
-        output,
-    );
+    let status = resolve_display_status(Some(""), &AgentType::Cc, "", output);
     assert_eq!(status, AgentStatus::Idle);
 }
 
@@ -458,10 +438,7 @@ fn cc_working_thinking() {
 /// Empty output should be unknown.
 #[test]
 fn cc_unknown_empty() {
-    assert_eq!(
-        detect_status(&AgentType::Cc, "", ""),
-        AgentStatus::Unknown
-    );
+    assert_eq!(detect_status(&AgentType::Cc, "", ""), AgentStatus::Unknown);
     assert_eq!(
         detect_status(&AgentType::Cc, "", "   \n\n  "),
         AgentStatus::Unknown
@@ -514,10 +491,7 @@ fn codex_working_no_prompt() {
 /// Codex empty output.
 #[test]
 fn codex_unknown_empty() {
-    assert_eq!(
-        detect_status(&AgentType::Cod, "", ""),
-        AgentStatus::Unknown
-    );
+    assert_eq!(detect_status(&AgentType::Cod, "", ""), AgentStatus::Unknown);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -563,12 +537,9 @@ Previously you hit a rate limit, but it's resolved now.
 // ═══════════════════════════════════════════════════════════════════════════
 
 fn load_fixture(name: &str) -> (String, String, String) {
-    let path = format!(
-        "{}/tests/fixtures/{}.txt",
-        env!("CARGO_MANIFEST_DIR"),
-        name
-    );
-    let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("missing fixture: {}", path));
+    let path = format!("{}/tests/fixtures/{}.txt", env!("CARGO_MANIFEST_DIR"), name);
+    let content =
+        std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("missing fixture: {}", path));
     let mut title = String::new();
     let mut command = String::new();
     let mut output_lines = Vec::new();
@@ -599,8 +570,11 @@ fn fixture_ap_2_0_idle_with_stale_spinner_title() {
     let (title, command, output) = load_fixture("ap_2_0");
     assert_eq!(command, "zsh");
     assert!(title.starts_with('✳')); // Has spinner in title
-    // But the output shows idle (prompt visible, past-tense "Sautéed")
-    assert_eq!(detect_status(&AgentType::Cc, &title, &output), AgentStatus::Idle);
+                                     // But the output shows idle (prompt visible, past-tense "Sautéed")
+    assert_eq!(
+        detect_status(&AgentType::Cc, &title, &output),
+        AgentStatus::Idle
+    );
 }
 
 #[test]

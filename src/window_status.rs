@@ -19,10 +19,7 @@ fn icon(status: &WindowStatus) -> &'static str {
 }
 
 /// Set the window status for the current pane.
-pub async fn set_window_status(
-    client: &TmuxClient,
-    status: &WindowStatus,
-) -> Result<(), TaError> {
+pub async fn set_window_status(client: &TmuxClient, status: &WindowStatus) -> Result<(), TaError> {
     let pane_id = get_current_pane(client).await?;
 
     match status {
@@ -89,9 +86,7 @@ async fn get_current_pane(client: &TmuxClient) -> Result<String, TaError> {
     if let Ok(pane) = std::env::var("TMUX_PANE") {
         return Ok(pane);
     }
-    client
-        .run(&["display-message", "-p", "#{pane_id}"])
-        .await
+    client.run(&["display-message", "-p", "#{pane_id}"]).await
 }
 
 async fn clear_status(client: &TmuxClient, pane_id: &str) -> Result<(), TaError> {
@@ -132,9 +127,7 @@ async fn update_format_option(
             client
                 .run(&["show-option", "-gv", option])
                 .await
-                .unwrap_or_else(|_| {
-                    "#I:#W#{?window_flags,#{window_flags}, }".to_string()
-                })
+                .unwrap_or_else(|_| "#I:#W#{?window_flags,#{window_flags}, }".to_string())
         }
     };
 
@@ -183,7 +176,8 @@ mod tests {
 
     #[test]
     fn no_double_inject() {
-        let input = "#I:#W#{?@workmux_status, #{@workmux_status},}#{?window_flags,#{window_flags}, }";
+        let input =
+            "#I:#W#{?@workmux_status, #{@workmux_status},}#{?window_flags,#{window_flags}, }";
         // Already contains @workmux_status — should not re-inject
         assert!(input.contains("@workmux_status"));
     }

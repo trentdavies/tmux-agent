@@ -35,8 +35,6 @@ pub enum Command {
         #[command(subcommand)]
         target: Option<SwitchTarget>,
     },
-    /// Set up tmux keybindings for popup switchers
-    Bind(BindArgs),
     /// Generate shell integration (aliases, completions)
     Shell {
         /// Shell type
@@ -44,7 +42,7 @@ pub enum Command {
     },
     /// Set the window status icon for the current pane
     SetWindowStatus(SetWindowStatusArgs),
-    /// Set up agent hooks (Claude Code, Codex) for automatic status tracking
+    /// Set up tmux keybindings, agent hooks, and integrations
     Setup {
         #[command(subcommand)]
         action: SetupAction,
@@ -77,6 +75,8 @@ pub enum WindowStatus {
 
 #[derive(Subcommand)]
 pub enum SetupAction {
+    /// Set up tmux keybindings for popup switchers
+    Tmux(BindArgs),
     /// Install agent hooks for automatic status tracking
     Hooks,
 }

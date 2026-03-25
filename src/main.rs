@@ -90,10 +90,6 @@ async fn run(cli: Cli) -> Result<(), TaError> {
             }
         }
 
-        Command::Bind(args) => {
-            run_bind(&client, args).await?;
-        }
-
         Command::Shell { shell } => {
             run_shell(shell);
         }
@@ -107,6 +103,9 @@ async fn run(cli: Cli) -> Result<(), TaError> {
         }
 
         Command::Setup { action } => match action {
+            SetupAction::Tmux(args) => {
+                run_bind(&client, args).await?;
+            }
             SetupAction::Hooks => {
                 setup::setup_hooks()?;
             }
@@ -123,10 +122,7 @@ fn should_popup() -> bool {
 
 /// Re-exec `ta switch [target]` inside a tmux display-popup.
 async fn exec_in_popup(target: &Option<SwitchTarget>) -> Result<(), TaError> {
-    let ta_bin = std::env::current_exe()
-        .unwrap_or_else(|_| "ta".into())
-        .to_string_lossy()
-        .to_string();
+    let ta_bin = "ta".to_string();
 
     let subcmd = match target {
         None => "switch".to_string(),
@@ -218,7 +214,7 @@ async fn save_prior_bindings(client: &TmuxClient, keys: &[String]) -> Result<(),
     };
 
     // Only save if we haven't already saved for this key (don't overwrite
-    // the original binding if user runs `ta bind` twice)
+    // the original binding if user runs `ta setup tmux` twice)
     for key in keys {
         if !saved.contains_key(key) {
             if let Some(binding) = get_current_binding(client, key).await {
@@ -318,7 +314,7 @@ fn resolve_bindings(args: &cli::BindArgs) -> Vec<(String, &'static str)> {
 /// Generate the tmux.conf content for current bindings.
 fn generate_bindings_conf(bindings: &[(String, &str)], ta_bin: &str) -> String {
     let mut lines = vec![
-        "# ta keybindings — managed by `ta bind`".to_string(),
+        "# ta keybindings — managed by `ta setup tmux`".to_string(),
         "# Source this from your tmux.conf:".to_string(),
         format!("#   source-file {}", bindings_path().display()),
         String::new(),
@@ -360,10 +356,7 @@ async fn persist_and_apply(
 }
 
 async fn run_bind(client: &TmuxClient, args: cli::BindArgs) -> Result<(), TaError> {
-    let ta_bin = std::env::current_exe()
-        .unwrap_or_else(|_| "ta".into())
-        .to_string_lossy()
-        .to_string();
+    let ta_bin = "ta".to_string();
     let path = bindings_path();
 
     if args.show {
@@ -372,7 +365,7 @@ async fn run_bind(client: &TmuxClient, args: cli::BindArgs) -> Result<(), TaErro
             print!("{}", content);
         } else {
             println!("No ta keybindings configured.");
-            println!("Run `ta bind` to set up default bindings.");
+            println!("Run `ta setup tmux` to set up default bindings.");
         }
         return Ok(());
     }
@@ -422,7 +415,7 @@ async fn run_bind(client: &TmuxClient, args: cli::BindArgs) -> Result<(), TaErro
         println!("To load on tmux startup, add to your ~/.tmux.conf:");
         println!("  source-file {}", path_display);
         println!();
-        println!("Or run: ta bind --persist");
+        println!("Or run: ta setup tmux --persist");
     }
 
     Ok(())
@@ -494,10 +487,7 @@ fn remove_source_from_tmux_conf() -> Result<(), TaError> {
 }
 
 fn run_shell(shell: cli::ShellType) {
-    let ta_bin = std::env::current_exe()
-        .unwrap_or_else(|_| "ta".into())
-        .to_string_lossy()
-        .to_string();
+    let ta_bin = "ta".to_string();
 
     match shell {
         cli::ShellType::Zsh => print_zsh_integration(&ta_bin),
