@@ -1120,25 +1120,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ta"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap 4.6.0",
- "dirs-next",
- "futures",
- "regex",
- "serde",
- "serde_json",
- "skim",
- "sysinfo",
- "thiserror 2.0.18",
- "tokio",
- "uuid",
- "which",
-]
-
-[[package]]
 name = "term"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1239,6 +1220,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31d42176308937165701f50638db1c31586f183f1aab416268216577aec7306b"
 dependencies = [
  "chrono",
+]
+
+[[package]]
+name = "tmux-agent"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap 4.6.0",
+ "dirs-next",
+ "futures",
+ "regex",
+ "serde",
+ "serde_json",
+ "skim",
+ "sysinfo",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+ "which",
 ]
 
 [[package]]

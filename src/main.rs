@@ -5,11 +5,13 @@ mod agent;
 mod cli;
 mod envelope;
 mod error;
+mod setup;
 mod switch;
 mod tmux;
 mod version;
+mod window_status;
 
-use cli::{Cli, Command, PaneAction, SessionAction, SwitchTarget};
+use cli::{Cli, Command, PaneAction, SessionAction, SetupAction, SwitchTarget};
 use error::TaError;
 use tmux::TmuxClient;
 
@@ -95,6 +97,20 @@ async fn run(cli: Cli) -> Result<(), TaError> {
         Command::Shell { shell } => {
             run_shell(shell);
         }
+
+        Command::SetWindowStatus(args) => {
+            if let Some(cmd) = &args.command {
+                window_status::set_window_status_via_command(cmd, &args.status).await?;
+            } else {
+                window_status::set_window_status(&client, &args.status).await?;
+            }
+        }
+
+        Command::Setup { action } => match action {
+            SetupAction::Hooks => {
+                setup::setup_hooks()?;
+            }
+        },
     }
 
     Ok(())

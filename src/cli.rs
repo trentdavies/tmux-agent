@@ -42,6 +42,43 @@ pub enum Command {
         /// Shell type
         shell: ShellType,
     },
+    /// Set the window status icon for the current pane
+    SetWindowStatus(SetWindowStatusArgs),
+    /// Set up agent hooks (Claude Code, Codex) for automatic status tracking
+    Setup {
+        #[command(subcommand)]
+        action: SetupAction,
+    },
+}
+
+#[derive(Args)]
+pub struct SetWindowStatusArgs {
+    /// Status to set
+    pub status: WindowStatus,
+
+    /// Override command to run instead of the built-in tmux logic.
+    /// Useful for delegating to another tool (e.g. "workmux set-window-status").
+    /// The status name (working/waiting/done/clear) is appended as the last argument.
+    #[arg(long)]
+    pub command: Option<String>,
+}
+
+#[derive(Clone, clap::ValueEnum)]
+pub enum WindowStatus {
+    /// Agent is actively working
+    Working,
+    /// Agent needs user input (auto-clears on window focus)
+    Waiting,
+    /// Agent has finished (auto-clears on window focus)
+    Done,
+    /// Clear the status
+    Clear,
+}
+
+#[derive(Subcommand)]
+pub enum SetupAction {
+    /// Install agent hooks for automatic status tracking
+    Hooks,
 }
 
 #[derive(Subcommand)]
