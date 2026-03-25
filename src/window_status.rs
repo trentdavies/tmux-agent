@@ -115,7 +115,7 @@ async fn update_format_option(
         .await
         .ok()
         .filter(|s| !s.is_empty())
-        .or_else(|| {
+        .or({
             // Can't use async in or_else, so try sync fallback
             None
         });

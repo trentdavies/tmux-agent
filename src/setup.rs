@@ -78,7 +78,7 @@ fn setup_claude_hooks() -> Result<Option<String>, TaError> {
     };
 
     // Check if Claude Code is installed
-    if !settings_path.parent().map_or(false, |p| p.exists()) {
+    if !settings_path.parent().is_some_and(|p| p.exists()) {
         return Ok(None);
     }
 
