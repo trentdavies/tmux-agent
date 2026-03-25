@@ -2,8 +2,19 @@
 name = "tmux-agent"
 version = "0.1.0"
 edition = "2021"
-description = "Tmux Agent TAsks — manage and monitor AI coding agents in tmux"
+description = "Fast tmux switcher and AI agent monitor — fuzzy-find sessions, windows, panes, worktrees, and Claude/Codex agents"
 license = "MIT"
+repository = "https://github.com/trentdavies/tmux-agent"
+homepage = "https://github.com/trentdavies/tmux-agent"
+readme = "README.md"
+keywords = ["tmux", "agent", "claude", "codex", "fuzzy-finder"]
+categories = ["command-line-utilities", "development-tools"]
+rust-version = "1.80"
+exclude = [
+    "tests/fixtures/",
+    "docs/",
+    ".claude/",
+]
 
 [[bin]]
 name = "ta"
@@ -11,16 +22,15 @@ path = "src/main.rs"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-dirs-next = "2"
 clap = { version = "4", features = ["derive"] }
+dirs-next = "2"
 futures = "0.3"
 regex = "1"
-which = "7"
 serde = { version = "1", features = ["derive"] }
-sysinfo = "0.34"
 serde_json = "1"
 skim = "0.10"
+sysinfo = "0.34"
 thiserror = "2"
 tokio = { version = "1", features = ["process", "time", "rt-multi-thread", "macros", "sync"] }
 uuid = { version = "1", features = ["v4"] }
-
+which = "7"
