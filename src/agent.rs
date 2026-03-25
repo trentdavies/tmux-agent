@@ -348,10 +348,9 @@ pub fn status_from_output(agent_type: &AgentType, output: &str) -> AgentStatus {
     }
 
     // 4. Working detection (CC spinner patterns in last 20 lines)
-    if *agent_type == AgentType::Cc
-        && CC_SPINNER_OUTPUT.iter().any(|re| re.is_match(&last_20)) {
-            return AgentStatus::Working;
-        }
+    if *agent_type == AgentType::Cc && CC_SPINNER_OUTPUT.iter().any(|re| re.is_match(&last_20)) {
+        return AgentStatus::Working;
+    }
 
     // 5. Error detection (last 10 lines) — only if not idle
     for pat in &patterns.error {
