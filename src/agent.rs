@@ -11,6 +11,8 @@ use crate::tmux::pane::AgentType;
 #[serde(rename_all = "snake_case")]
 pub enum AgentStatus {
     Working,
+    Waiting,
+    Done,
     Idle,
     RateLimited,
     Error,
@@ -20,17 +22,21 @@ pub enum AgentStatus {
 impl AgentStatus {
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::Working => "~",
-            Self::Idle => ">",
-            Self::RateLimited => "!",
-            Self::Error => "x",
-            Self::Unknown => "?",
+            Self::Working => "🤖",
+            Self::Waiting => "💬",
+            Self::Done => "✅",
+            Self::Idle => "💤",
+            Self::RateLimited => "🚫",
+            Self::Error => "❌",
+            Self::Unknown => "❓",
         }
     }
 
     pub fn label(&self) -> &'static str {
         match self {
             Self::Working => "working",
+            Self::Waiting => "waiting",
+            Self::Done => "done",
             Self::Idle => "idle",
             Self::RateLimited => "rate-limited",
             Self::Error => "error",
@@ -38,23 +44,22 @@ impl AgentStatus {
         }
     }
 
-    /// ANSI color code for this status.
     fn ansi_code(&self) -> &'static str {
         match self {
-            Self::Working => "\x1b[32m",     // green
-            Self::Idle => "\x1b[33m",        // yellow
-            Self::RateLimited => "\x1b[31m", // red
-            Self::Error => "\x1b[1;31m",     // bold red
-            Self::Unknown => "\x1b[90m",     // dim gray
+            Self::Working => "\x1b[32m",      // green
+            Self::Waiting => "\x1b[35m",      // magenta
+            Self::Done => "\x1b[36m",         // cyan
+            Self::Idle => "\x1b[33m",         // yellow
+            Self::RateLimited => "\x1b[31m",  // red
+            Self::Error => "\x1b[1;31m",      // bold red
+            Self::Unknown => "\x1b[90m",      // dim gray
         }
     }
 
-    /// Icon with ANSI color.
     pub fn colored_icon(&self) -> String {
         format!("{}{}\x1b[0m", self.ansi_code(), self.icon())
     }
 
-    /// Label with ANSI color.
     pub fn colored_label(&self) -> String {
         format!("{}{}\x1b[0m", self.ansi_code(), self.label())
     }
@@ -374,6 +379,54 @@ fn get_last_n_lines(s: &str, n: usize) -> String {
 /// Best-effort status from output patterns.
 pub fn detect_status(agent_type: &AgentType, _title: &str, output: &str) -> AgentStatus {
     status_from_output(agent_type, output)
+}
+
+/// Map a window status icon (from @ta_status or @workmux_status) to AgentStatus.
+/// These are the most authoritative signals — set by hooks at the exact moment
+/// the agent changes state.
+pub fn status_from_window_option(icon: &str) -> Option<AgentStatus> {
+    let icon = icon.trim();
+    if icon.is_empty() {
+        return None;
+    }
+    // Match both ta and workmux default icons
+    match icon {
+        "🤖" => Some(AgentStatus::Working),
+        "💬" => Some(AgentStatus::Waiting),
+        "✅" => Some(AgentStatus::Done),
+        _ => {
+            // Try common text fallbacks
+            let lower = icon.to_lowercase();
+            if lower.contains("working") || lower.contains("running") {
+                Some(AgentStatus::Working)
+            } else if lower.contains("waiting") || lower.contains("input") {
+                Some(AgentStatus::Waiting)
+            } else if lower.contains("done") || lower.contains("finished") {
+                Some(AgentStatus::Done)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// Combine window option (hook-set) with output-based detection.
+/// Window option is highest priority since it's set by real-time hooks.
+pub fn resolve_display_status(
+    window_option: Option<&str>,
+    agent_type: &AgentType,
+    title: &str,
+    output: &str,
+) -> AgentStatus {
+    // 1. Window option from hooks (most authoritative)
+    if let Some(opt) = window_option {
+        if let Some(status) = status_from_window_option(opt) {
+            return status;
+        }
+    }
+
+    // 2. Fall back to output-based detection
+    detect_status(agent_type, title, output)
 }
 
 // ─── Status patterns ────────────────────────────────────────────────────────
