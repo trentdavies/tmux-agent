@@ -1,7 +1,9 @@
 use crate::error::TaError;
 use crate::tmux::TmuxClient;
 
-/// Jump to a window with the given name, preferring the current session.
+const WINDOW_OPTION: &str = "@ta_base";
+
+/// Jump to a window tagged with @ta_base, preferring the current session.
 /// If no matching window exists, creates one running the specified command.
 pub async fn jump_to_base(
     client: &TmuxClient,
@@ -14,13 +16,16 @@ pub async fn jump_to_base(
         .trim()
         .to_string();
 
-    // List all windows across all sessions: "session_name:window_index window_name"
+    // List all windows, including the @ta_base option value
     let output = client
         .run(&[
             "list-windows",
             "-a",
             "-F",
-            "#{session_name}:#{window_index} #{window_name}",
+            &format!(
+                "#{{session_name}}:#{{window_index}} #{{{}}}",
+                WINDOW_OPTION
+            ),
         ])
         .await?;
 
@@ -30,9 +35,10 @@ pub async fn jump_to_base(
     for line in output.lines() {
         let mut parts = line.splitn(2, ' ');
         let target = parts.next().unwrap_or("");
-        let window_name = parts.next().unwrap_or("");
+        let option_val = parts.next().unwrap_or("").trim();
 
-        if window_name != name {
+        // Empty means the option isn't set on this window
+        if option_val.is_empty() {
             continue;
         }
 
@@ -63,8 +69,12 @@ pub async fn jump_to_base(
                     .to_string(),
             )
         })?;
+        // Create window and tag it so we can find it later
         client
             .run_silent(&["new-window", "-n", name, command])
+            .await?;
+        client
+            .run_silent(&["set-option", "-w", WINDOW_OPTION, "1"])
             .await?;
     }
 
