@@ -63,6 +63,15 @@ async fn run(cli: Cli) -> Result<(), TaError> {
         },
 
         Command::Switch { target } => {
+            // Base is a direct jump — no popup needed
+            if let Some(SwitchTarget::Base {
+                ref name,
+                ref command,
+            }) = target
+            {
+                return switch::base::jump_to_base(&client, name, command.as_deref()).await;
+            }
+
             // If inside tmux but not already in a popup, re-exec inside display-popup
             if should_popup() {
                 return exec_in_popup(&target).await;
@@ -87,6 +96,7 @@ async fn run(cli: Cli) -> Result<(), TaError> {
                 Some(SwitchTarget::Agent) => {
                     switch::agent::switch_agent(&client).await?;
                 }
+                Some(SwitchTarget::Base { .. }) => unreachable!(),
             }
         }
 
@@ -131,6 +141,8 @@ async fn exec_in_popup(target: &Option<SwitchTarget>) -> Result<(), TaError> {
         Some(SwitchTarget::Pane) => "switch pane".to_string(),
         Some(SwitchTarget::Worktree) => "switch worktree".to_string(),
         Some(SwitchTarget::Agent) => "switch agent".to_string(),
+        // Unreachable: base is handled before popup check
+        Some(SwitchTarget::Base { .. }) => unreachable!(),
     };
 
     let inner_cmd = format!("TA_POPUP=1 {} {}", ta_bin, subcmd);
@@ -273,46 +285,59 @@ async fn restore_prior_bindings(
 }
 
 /// Build the list of (key, subcommand) bindings from CLI args.
-fn resolve_bindings(args: &cli::BindArgs) -> Vec<(String, &'static str)> {
+fn resolve_bindings(args: &cli::BindArgs) -> Vec<(String, String)> {
     if args.session {
         vec![(
             args.key.clone().unwrap_or_else(|| "s".into()),
-            "switch session",
+            "switch session".into(),
         )]
     } else if args.window {
         vec![(
             args.key.clone().unwrap_or_else(|| "w".into()),
-            "switch window",
+            "switch window".into(),
         )]
     } else if args.pane {
         vec![(
-            args.key.clone().unwrap_or_else(|| "p".into()),
-            "switch pane",
+            args.key.clone().unwrap_or_else(|| "f".into()),
+            "switch pane".into(),
         )]
     } else if args.worktree {
         vec![(
             args.key.clone().unwrap_or_else(|| "t".into()),
-            "switch worktree",
+            "switch worktree".into(),
         )]
     } else if args.agent {
         vec![(
             args.key.clone().unwrap_or_else(|| "a".into()),
-            "switch agent",
+            "switch agent".into(),
         )]
     } else {
         // Default: bind all
-        vec![
-            ("s".into(), "switch session"),
-            ("w".into(), "switch window"),
-            ("p".into(), "switch"),
-            ("t".into(), "switch worktree"),
-            ("a".into(), "switch agent"),
-        ]
+        let mut bindings = vec![
+            ("s".into(), "switch session".into()),
+            ("w".into(), "switch window".into()),
+            ("f".into(), "switch".into()),
+            ("t".into(), "switch worktree".into()),
+            ("a".into(), "switch agent".into()),
+        ];
+
+        // Base binding included when --base-command is provided
+        if let Some(command) = &args.base_command {
+            let name = &args.base_name;
+            let subcmd = format!(
+                "switch base --name '{}' --command '{}'",
+                name.replace('\'', "'\\''"),
+                command.replace('\'', "'\\''"),
+            );
+            bindings.push(("b".into(), subcmd));
+        }
+
+        bindings
     }
 }
 
 /// Generate the tmux.conf content for current bindings.
-fn generate_bindings_conf(bindings: &[(String, &str)], ta_bin: &str) -> String {
+fn generate_bindings_conf(bindings: &[(String, String)], ta_bin: &str) -> String {
     let mut lines = vec![
         "# ta keybindings — managed by `ta setup tmux`".to_string(),
         "# Source this from your tmux.conf:".to_string(),
@@ -320,10 +345,19 @@ fn generate_bindings_conf(bindings: &[(String, &str)], ta_bin: &str) -> String {
         String::new(),
     ];
     for (key, subcmd) in bindings {
-        lines.push(format!(
-            "bind-key {} display-popup -E -w 80% -h 60% \"TA_POPUP=1 {} {}\"",
-            key, ta_bin, subcmd
-        ));
+        if subcmd.contains("switch base") {
+            // Base is a direct jump, no interactive popup needed.
+            // Use double quotes so the embedded single quotes in --name/--command survive.
+            lines.push(format!(
+                "bind-key {} run-shell -b \"{} {}\"",
+                key, ta_bin, subcmd
+            ));
+        } else {
+            lines.push(format!(
+                "bind-key {} display-popup -E -w 80% -h 60% \"TA_POPUP=1 {} {}\"",
+                key, ta_bin, subcmd
+            ));
+        }
     }
     lines.push(String::new());
     lines.join("\n")
@@ -333,7 +367,7 @@ fn generate_bindings_conf(bindings: &[(String, &str)], ta_bin: &str) -> String {
 /// Saves any prior bindings for the affected keys first.
 async fn persist_and_apply(
     client: &TmuxClient,
-    bindings: &[(String, &str)],
+    bindings: &[(String, String)],
     ta_bin: &str,
 ) -> Result<(), TaError> {
     // Save prior bindings before overwriting

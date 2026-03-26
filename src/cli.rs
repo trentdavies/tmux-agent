@@ -124,6 +124,16 @@ pub enum SwitchTarget {
     Worktree,
     /// Switch to an agent pane (Claude Code, Codex)
     Agent,
+    /// Jump to a named window (e.g. a dashboard), launching it if absent
+    Base {
+        /// Window name to find or create (default: "base")
+        #[arg(long, default_value = "base")]
+        name: String,
+
+        /// Command to run when creating the window
+        #[arg(long)]
+        command: Option<String>,
+    },
 }
 
 #[derive(Args)]
@@ -151,6 +161,14 @@ pub struct BindArgs {
     /// Bind agent switcher
     #[arg(long)]
     pub agent: bool,
+
+    /// Command to run in the base window (enables the base binding)
+    #[arg(long)]
+    pub base_command: Option<String>,
+
+    /// Window name for the base binding (default: "base")
+    #[arg(long, default_value = "base")]
+    pub base_name: String,
 
     /// Remove all ta bindings
     #[arg(long)]
