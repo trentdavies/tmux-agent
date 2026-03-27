@@ -53,6 +53,28 @@ pub async fn jump_to_base(
         if !target.starts_with(&format!("{}:", current_session)) {
             client.run_silent(&["switch-client", "-t", target]).await?;
         }
+
+        // If a command was provided and the pane is idle (at a shell prompt),
+        // re-send the command.
+        if let Some(command) = command {
+            let pane_cmd = client
+                .run(&["display-message", "-t", target, "-p", "#{pane_current_command}"])
+                .await
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+
+            let is_idle = matches!(
+                pane_cmd.rsplit('/').next().unwrap_or(""),
+                "zsh" | "bash" | "sh" | "fish"
+            );
+
+            if is_idle {
+                client
+                    .run_silent(&["send-keys", "-t", target, command, "Enter"])
+                    .await?;
+            }
+        }
     } else {
         let command = command.ok_or_else(|| {
             TaError::Other(
@@ -66,21 +88,18 @@ pub async fn jump_to_base(
                     .to_string(),
             )
         })?;
-        // Use the same shell tmux would normally spawn
-        let shell = client
-            .run(&["show-option", "-gv", "default-shell"])
-            .await
-            .map(|s| s.trim().to_string())
-            .unwrap_or_else(|_| {
-                std::env::var("SHELL").unwrap_or_else(|_| "sh".to_string())
-            });
 
-        let shell_cmd = format!("exec {}", command);
+        // Create a normal shell window first, then send the command as
+        // keystrokes. This way the underlying shell survives if the
+        // command exits or crashes.
         client
-            .run_silent(&["new-window", "-n", name, &shell, "-c", &shell_cmd])
+            .run_silent(&["new-window", "-n", name])
             .await?;
         client
             .run_silent(&["set-option", "-w", WINDOW_OPTION, "1"])
+            .await?;
+        client
+            .run_silent(&["send-keys", command, "Enter"])
             .await?;
     }
 
