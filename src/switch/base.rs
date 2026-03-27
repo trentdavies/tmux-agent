@@ -66,9 +66,18 @@ pub async fn jump_to_base(
                     .to_string(),
             )
         })?;
-        // Create window and tag it so we can find it later
+        // Use the same shell tmux would normally spawn
+        let shell = client
+            .run(&["show-option", "-gv", "default-shell"])
+            .await
+            .map(|s| s.trim().to_string())
+            .unwrap_or_else(|_| {
+                std::env::var("SHELL").unwrap_or_else(|_| "sh".to_string())
+            });
+
+        let shell_cmd = format!("exec {}", command);
         client
-            .run_silent(&["new-window", "-n", name, command])
+            .run_silent(&["new-window", "-n", name, &shell, "-c", &shell_cmd])
             .await?;
         client
             .run_silent(&["set-option", "-w", WINDOW_OPTION, "1"])
