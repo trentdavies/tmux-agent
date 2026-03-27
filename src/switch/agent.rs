@@ -68,7 +68,7 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
             display.push_str(&task);
         }
         if !branch.is_empty() {
-            display.push_str(&format!(" \x1b[90m{}\x1b[0m", branch));
+            display.push_str(&format!(" \x1b[38;5;208m{}\x1b[0m", branch));
         }
         display.push_str(&format!(" \x1b[90m{}\x1b[0m", path));
 

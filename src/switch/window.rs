@@ -35,7 +35,7 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
         let mut display = key.clone();
 
         if !branch.is_empty() {
-            display.push_str(&format!(" \x1b[90m{}\x1b[0m", branch));
+            display.push_str(&format!(" \x1b[38;5;208m{}\x1b[0m", branch));
         }
 
         display.push_str(&format!(" \x1b[90m{}\x1b[0m", path));

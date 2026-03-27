@@ -39,7 +39,7 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
             let leaf = wt.path.rsplit('/').next().unwrap_or(&wt.path);
 
             let display = format!(
-                "[{}] \x1b[90m../{}\x1b[0m",
+                "\x1b[38;5;208m[{}]\x1b[0m \x1b[90m../{}\x1b[0m",
                 wt.branch, leaf,
             );
 

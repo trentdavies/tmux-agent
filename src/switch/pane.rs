@@ -3,7 +3,7 @@ use crate::tmux::pane::format_tags;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{git_branches, run_picker, switch_to, tilde_path, PickerItem};
+use super::{compress_path, git_branches, path_tail, run_picker, switch_to, PickerItem};
 
 /// General switcher — replaces tmux-pane-finder.
 /// Shows all panes across all sessions with agent metadata, directory, and branch.
@@ -20,21 +20,44 @@ pub async fn switch_pane(client: &TmuxClient) -> Result<(), TaError> {
             let target = pane.target();
             let label = pane.label();
             let tags = format_tags(&pane.tags);
-            let path = tilde_path(&pane.current_path);
+            let path = compress_path(&pane.current_path);
+            let tail = path_tail(&pane.current_path);
             let branch = branches
                 .get(&pane.current_path)
                 .map(|b| format!("[{}]", b))
                 .unwrap_or_default();
 
-            let display = format!(
-                "{:<18} {:<16} {:<12} {:<30} {}",
-                target, label, tags, path, branch,
-            );
+            let mut display = target.clone();
+
+            if label != "user" {
+                display.push(' ');
+                display.push_str(&label);
+            }
+            if !tags.is_empty() {
+                display.push(' ');
+                display.push_str(&tags);
+            }
+            if !branch.is_empty() {
+                display.push_str(&format!(" \x1b[38;5;208m{}\x1b[0m", branch));
+            }
+            display.push_str(&format!(" \x1b[90m{}\x1b[0m", path));
+
+            let mut search = format!("{} {}", pane.session_name, label);
+            if !tags.is_empty() {
+                search.push(' ');
+                search.push_str(&tags);
+            }
+            search.push(' ');
+            search.push_str(&tail);
+            if let Some(b) = branches.get(&pane.current_path) {
+                search.push(' ');
+                search.push_str(b);
+            }
 
             PickerItem {
                 display,
                 output: target.clone(),
-                search_text: None,
+                search_text: Some(search),
             }
         })
         .collect();

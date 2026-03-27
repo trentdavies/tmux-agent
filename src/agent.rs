@@ -32,18 +32,6 @@ impl AgentStatus {
         }
     }
 
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Working => "working",
-            Self::Waiting => "waiting",
-            Self::Done => "done",
-            Self::Idle => "idle",
-            Self::RateLimited => "rate-limited",
-            Self::Error => "error",
-            Self::Unknown => "unknown",
-        }
-    }
-
     fn ansi_code(&self) -> &'static str {
         match self {
             Self::Working => "\x1b[32m",     // green
@@ -60,9 +48,6 @@ impl AgentStatus {
         format!("{}{}\x1b[0m", self.ansi_code(), self.icon())
     }
 
-    pub fn colored_label(&self) -> String {
-        format!("{}{}\x1b[0m", self.ansi_code(), self.label())
-    }
 }
 
 /// How the agent type was detected, with confidence.
