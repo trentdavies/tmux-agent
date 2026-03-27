@@ -1,13 +1,11 @@
-use crate::agent::{detect_agent, resolve_display_status, snapshot_processes, task_from_title};
 use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{compress_path, git_branches, run_picker, switch_to, PickerItem};
+use super::{compress_path, git_branches, path_tail, run_picker, switch_to, PickerItem};
 
 pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
     let panes = list_all_panes(client).await?;
-    let sys = snapshot_processes();
 
     // Group panes by session:window
     let mut windows: std::collections::BTreeMap<String, Vec<&crate::tmux::Pane>> =
@@ -24,8 +22,6 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
     let mut items: Vec<PickerItem> = Vec::new();
 
     for (key, win_panes) in &windows {
-        let pane_count = win_panes.len();
-
         // Use the most common path in this window
         let dir = most_common_path(win_panes);
         let path = compress_path(&dir);
@@ -34,36 +30,28 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
             .map(|b| format!("[{}]", b))
             .unwrap_or_default();
 
-        // Find all agents in this window
-        let agents = find_window_agents(client, &sys, win_panes).await;
+        let tail = path_tail(&dir);
 
-        let mut display = format!(
-            "{} {} {} pane{}",
-            key,
-            path,
-            pane_count,
-            if pane_count == 1 { "" } else { "s" },
-        );
+        let mut display = key.clone();
 
         if !branch.is_empty() {
-            display.push(' ');
-            display.push_str(&branch);
+            display.push_str(&format!(" \x1b[90m{}\x1b[0m", branch));
         }
 
-        for (status, agent_type, task) in &agents {
-            display.push(' ');
-            display.push_str(&status.colored_icon());
-            display.push_str(agent_type);
-            if !task.is_empty() {
-                display.push(' ');
-                display.push_str(task);
-            }
+        display.push_str(&format!(" \x1b[90m{}\x1b[0m", path));
+
+        let mut search = key.clone();
+        search.push(' ');
+        search.push_str(&tail);
+        if let Some(b) = branches.get(&dir) {
+            search.push(' ');
+            search.push_str(b);
         }
 
         items.push(PickerItem {
             display,
             output: key.clone(),
-            search_text: None,
+            search_text: Some(search),
         });
     }
 
@@ -75,46 +63,6 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
     }
 
     Ok(())
-}
-
-/// Find all agent panes in a window. Returns (status, type_tag, task) for each.
-async fn find_window_agents(
-    client: &TmuxClient,
-    sys: &sysinfo::System,
-    panes: &[&crate::tmux::Pane],
-) -> Vec<(crate::agent::AgentStatus, String, String)> {
-    let mut agents = Vec::new();
-
-    for pane in panes {
-        let Some(detection) = detect_agent(sys, &pane.command, pane.pid, &pane.title, "") else {
-            continue;
-        };
-
-        let target = pane.target();
-        let window_opt = client
-            .run(&["show-option", "-wv", "-t", &target, "@workmux_status"])
-            .await
-            .ok()
-            .filter(|s| !s.trim().is_empty());
-
-        let output = client
-            .run(&["capture-pane", "-p", "-t", &target, "-S", "-30"])
-            .await
-            .unwrap_or_default();
-
-        let status = resolve_display_status(
-            window_opt.as_deref(),
-            &detection.agent_type,
-            &pane.title,
-            &output,
-        );
-
-        let type_tag = detection.agent_type.tag().to_string();
-        let task = task_from_title(&pane.title).unwrap_or_default();
-        agents.push((status, type_tag, task));
-    }
-
-    agents
 }
 
 fn most_common_path(panes: &[&crate::tmux::Pane]) -> String {
