@@ -3,7 +3,7 @@ use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{compress_path, git_branches, run_picker, switch_to, PickerItem};
+use super::{compress_path, git_branches, path_tail, run_picker, switch_to, PickerItem};
 
 /// Agent switcher — lists all detected agent panes with status.
 /// Uses multi-method detection: process tree > content > title.
@@ -56,33 +56,38 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
         let task = task_from_title(&pane.title).unwrap_or_default();
         let type_tag = detection.agent_type.tag();
         let path = compress_path(&pane.current_path);
+        let tail = path_tail(&pane.current_path);
         let branch = branches
             .get(&pane.current_path)
             .map(|b| format!("[{}]", b))
             .unwrap_or_default();
 
-        let mut display = format!(
-            "{} {} {} {}",
-            status.colored_icon(),
-            target,
-            status.colored_label(),
-            type_tag,
-        );
+        let mut display = format!("{}{}", status.colored_icon(), type_tag);
         if !task.is_empty() {
             display.push(' ');
             display.push_str(&task);
         }
-        display.push(' ');
-        display.push_str(&path);
         if !branch.is_empty() {
-            display.push(' ');
-            display.push_str(&branch);
+            display.push_str(&format!(" \x1b[90m{}\x1b[0m", branch));
+        }
+        display.push_str(&format!(" \x1b[90m{}\x1b[0m", path));
+
+        let mut search = type_tag.to_string();
+        if !task.is_empty() {
+            search.push(' ');
+            search.push_str(&task);
+        }
+        search.push(' ');
+        search.push_str(&tail);
+        if let Some(b) = branches.get(&pane.current_path) {
+            search.push(' ');
+            search.push_str(b);
         }
 
         items.push(PickerItem {
             display,
             output: target.clone(),
-            search_text: None,
+            search_text: Some(search),
         });
     }
 

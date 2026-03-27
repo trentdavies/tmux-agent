@@ -4,7 +4,7 @@ use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{run_picker, switch_to, tilde_path, PickerItem};
+use super::{run_picker, switch_to, PickerItem};
 
 /// Worktree switcher — replaces wt() from zshrc.
 /// Lists worktrees from the current repo, jumps to an existing window
@@ -36,35 +36,17 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
     let items: Vec<PickerItem> = worktrees
         .iter()
         .map(|wt| {
-            let path_display = tilde_path(&wt.path);
-            let branch_display = format!("[{}]", wt.branch);
-
-            let window_info = if let Some(panes) = path_to_panes.get(wt.path.as_str()) {
-                if let Some(first) = panes.first() {
-                    let count = panes.len();
-                    format!(
-                        "{}:{} ({} pane{})",
-                        first.session_name,
-                        first.window_index,
-                        count,
-                        if count == 1 { "" } else { "s" }
-                    )
-                } else {
-                    "(new window)".to_string()
-                }
-            } else {
-                "(new window)".to_string()
-            };
+            let leaf = wt.path.rsplit('/').next().unwrap_or(&wt.path);
 
             let display = format!(
-                "{:<40} {:<20} {}",
-                path_display, branch_display, window_info,
+                "[{}] \x1b[90m../{}\x1b[0m",
+                wt.branch, leaf,
             );
 
             PickerItem {
                 display,
                 output: wt.path.clone(),
-                search_text: None,
+                search_text: Some(format!("{} {}", wt.branch, leaf)),
             }
         })
         .collect();
