@@ -104,6 +104,36 @@ pub fn compress_path(path: &str) -> String {
     )
 }
 
+/// Render a path for display: leaf/parent in normal text, compressed ancestry dimmed.
+/// Example: `~/dev/tdavies/tmux-agent/src` → `tmux-agent/src  ~/d/t`
+/// Short paths (≤3 segments) are returned as-is with tilde substitution.
+pub fn display_path(path: &str) -> String {
+    let path = tilde_path(path);
+    let parts: Vec<&str> = path.split('/').collect();
+
+    if parts.len() <= 3 {
+        return path;
+    }
+
+    let last_two = format!("{}/{}", parts[parts.len() - 1], parts[parts.len() - 2]);
+
+    let first = parts[0];
+    let middle = &parts[1..parts.len() - 2];
+    let compressed: Vec<String> = middle
+        .iter()
+        .map(|seg| {
+            if seg.is_empty() {
+                String::new()
+            } else {
+                seg.chars().next().unwrap().to_string()
+            }
+        })
+        .collect();
+    let ancestry = format!("{}/{}", first, compressed.join("/"));
+
+    format!("{}  \x1b[90m{}\x1b[0m", last_two, ancestry)
+}
+
 /// Return the last two segments of a path, space-separated for search.
 /// Example: `~/dev/tdavies/tmux-agent/src` → `tmux-agent src`
 pub fn path_tail(path: &str) -> String {

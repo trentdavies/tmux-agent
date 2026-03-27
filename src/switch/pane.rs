@@ -3,7 +3,7 @@ use crate::tmux::pane::format_tags;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{compress_path, git_branches, path_tail, run_picker, switch_to, PickerItem};
+use super::{display_path, git_branches, path_tail, run_picker, switch_to, PickerItem};
 
 /// General switcher — replaces tmux-pane-finder.
 /// Shows all panes across all sessions with agent metadata, directory, and branch.
@@ -20,7 +20,7 @@ pub async fn switch_pane(client: &TmuxClient) -> Result<(), TaError> {
             let target = pane.target();
             let label = pane.label();
             let tags = format_tags(&pane.tags);
-            let path = compress_path(&pane.current_path);
+            let path = display_path(&pane.current_path);
             let tail = path_tail(&pane.current_path);
             let branch = branches
                 .get(&pane.current_path)
@@ -40,7 +40,8 @@ pub async fn switch_pane(client: &TmuxClient) -> Result<(), TaError> {
             if !branch.is_empty() {
                 display.push_str(&format!(" \x1b[38;5;208m{}\x1b[0m", branch));
             }
-            display.push_str(&format!(" \x1b[90m{}\x1b[0m", path));
+            display.push(' ');
+            display.push_str(&path);
 
             let mut search = format!("{} {}", pane.session_name, label);
             if !tags.is_empty() {
