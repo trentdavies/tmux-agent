@@ -47,7 +47,6 @@ impl AgentStatus {
     pub fn colored_icon(&self) -> String {
         format!("{}{}\x1b[0m", self.ansi_code(), self.icon())
     }
-
 }
 
 /// How the agent type was detected, with confidence.

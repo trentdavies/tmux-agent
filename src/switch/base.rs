@@ -22,10 +22,7 @@ pub async fn jump_to_base(
             "list-windows",
             "-a",
             "-F",
-            &format!(
-                "#{{session_name}}:#{{window_index}} #{{{}}}",
-                WINDOW_OPTION
-            ),
+            &format!("#{{session_name}}:#{{window_index}} #{{{}}}", WINDOW_OPTION),
         ])
         .await?;
 

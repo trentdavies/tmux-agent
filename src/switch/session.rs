@@ -32,10 +32,7 @@ pub async fn switch_session(client: &TmuxClient) -> Result<(), TaError> {
             let path = compress_path(&raw_dir);
             let tail = path_tail(&raw_dir);
 
-            let display = format!(
-                "{}  \x1b[90m{}\x1b[0m",
-                s.name, path,
-            );
+            let display = format!("{}  \x1b[90m{}\x1b[0m", s.name, path,);
 
             PickerItem {
                 display,

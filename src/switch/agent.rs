@@ -114,4 +114,3 @@ async fn read_window_status(client: &TmuxClient, target: &str) -> Option<String>
     }
     None
 }
-
