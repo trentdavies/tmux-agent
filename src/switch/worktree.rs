@@ -4,7 +4,7 @@ use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{run_picker, switch_to, PickerItem};
+use super::{run_picker, switch_to, tilde_path, PickerItem};
 
 /// Worktree switcher — replaces wt() from zshrc.
 /// Lists worktrees from the current repo, jumps to an existing window
@@ -64,6 +64,7 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
             PickerItem {
                 display,
                 output: wt.path.clone(),
+                search_text: None,
             }
         })
         .collect();
@@ -169,15 +170,6 @@ async fn list_worktrees(git_root: &str) -> Option<Vec<WorktreeInfo>> {
     }
 
     Some(worktrees)
-}
-
-fn tilde_path(path: &str) -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        if let Some(rest) = path.strip_prefix(&home) {
-            return format!("~{rest}");
-        }
-    }
-    path.to_string()
 }
 
 fn expand_tilde(path: &str) -> String {

@@ -3,7 +3,7 @@ use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{git_branches, run_picker, switch_to, PickerItem};
+use super::{compress_path, git_branches, run_picker, switch_to, PickerItem};
 
 pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
     let panes = list_all_panes(client).await?;
@@ -63,6 +63,7 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
         items.push(PickerItem {
             display,
             output: key.clone(),
+            search_text: None,
         });
     }
 
@@ -126,44 +127,4 @@ fn most_common_path(panes: &[&crate::tmux::Pane]) -> String {
         .max_by_key(|(_, c)| *c)
         .map(|(p, _)| p.to_string())
         .unwrap_or_default()
-}
-
-fn compress_path(path: &str) -> String {
-    let path = tilde_path(path);
-    let parts: Vec<&str> = path.split('/').collect();
-
-    if parts.len() <= 3 {
-        return path;
-    }
-
-    let first = parts[0];
-    let middle = &parts[1..parts.len() - 2];
-    let last_two = &parts[parts.len() - 2..];
-
-    let compressed_middle: Vec<String> = middle
-        .iter()
-        .map(|seg| {
-            if seg.is_empty() {
-                String::new()
-            } else {
-                seg.chars().next().unwrap().to_string()
-            }
-        })
-        .collect();
-
-    format!(
-        "{}/{}/{}",
-        first,
-        compressed_middle.join("/"),
-        last_two.join("/"),
-    )
-}
-
-fn tilde_path(path: &str) -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        if let Some(rest) = path.strip_prefix(&home) {
-            return format!("~{rest}");
-        }
-    }
-    path.to_string()
 }

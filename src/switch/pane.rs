@@ -3,7 +3,7 @@ use crate::tmux::pane::format_tags;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{git_branches, run_picker, switch_to, PickerItem};
+use super::{git_branches, run_picker, switch_to, tilde_path, PickerItem};
 
 /// General switcher — replaces tmux-pane-finder.
 /// Shows all panes across all sessions with agent metadata, directory, and branch.
@@ -34,6 +34,7 @@ pub async fn switch_pane(client: &TmuxClient) -> Result<(), TaError> {
             PickerItem {
                 display,
                 output: target.clone(),
+                search_text: None,
             }
         })
         .collect();
@@ -47,13 +48,4 @@ pub async fn switch_pane(client: &TmuxClient) -> Result<(), TaError> {
     }
 
     Ok(())
-}
-
-fn tilde_path(path: &str) -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        if let Some(rest) = path.strip_prefix(&home) {
-            return format!("~{rest}");
-        }
-    }
-    path.to_string()
 }

@@ -4,7 +4,7 @@ use crate::error::TaError;
 use crate::tmux::session::{list_all_panes, list_sessions};
 use crate::tmux::TmuxClient;
 
-use super::{run_picker, switch_to, PickerItem};
+use super::{compress_path, path_tail, run_picker, switch_to, PickerItem};
 
 pub async fn switch_session(client: &TmuxClient) -> Result<(), TaError> {
     let sessions = list_sessions(client).await?;
@@ -23,26 +23,24 @@ pub async fn switch_session(client: &TmuxClient) -> Result<(), TaError> {
     let items: Vec<PickerItem> = sessions
         .iter()
         .map(|s| {
-            let attached = if s.attached { " (attached)" } else { "" };
-
-            // Use the most common pane path, not session_path
-            let dir = session_paths
+            let raw_dir = session_paths
                 .get(s.name.as_str())
                 .and_then(|paths| paths.iter().max_by_key(|(_, count)| *count))
-                .map(|(path, _)| tilde_path(path))
-                .unwrap_or_else(|| tilde_path(&s.directory));
+                .map(|(path, _)| path.to_string())
+                .unwrap_or_else(|| s.directory.clone());
+
+            let path = compress_path(&raw_dir);
+            let tail = path_tail(&raw_dir);
 
             let display = format!(
-                "{:<20} {} window{}{:<12} {}",
-                s.name,
-                s.windows,
-                if s.windows == 1 { " " } else { "s" },
-                attached,
-                dir,
+                "{}  \x1b[90m{}\x1b[0m",
+                s.name, path,
             );
+
             PickerItem {
                 display,
                 output: s.name.clone(),
+                search_text: Some(format!("{} {}", s.name, tail)),
             }
         })
         .collect();
@@ -59,13 +57,4 @@ pub async fn switch_session(client: &TmuxClient) -> Result<(), TaError> {
     }
 
     Ok(())
-}
-
-fn tilde_path(path: &str) -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        if let Some(rest) = path.strip_prefix(&home) {
-            return format!("~{rest}");
-        }
-    }
-    path.to_string()
 }

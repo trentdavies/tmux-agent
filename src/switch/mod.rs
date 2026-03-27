@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use skim::prelude::*;
 use skim::{AnsiString, DisplayContext};
+use tuikit::key::Key;
 
 use crate::error::TaError;
 use crate::tmux::TmuxClient;
@@ -17,10 +18,12 @@ use crate::tmux::TmuxClient;
 /// A generic item for the skim picker.
 /// `display` is what the user sees (may contain ANSI color codes),
 /// `output` is the value returned on selection.
+/// `search_text` optionally overrides what skim fuzzy-matches against.
 #[derive(Clone)]
 pub struct PickerItem {
     pub display: String,
     pub output: String,
+    pub search_text: Option<String>,
 }
 
 /// Strip ANSI escape codes from a string.
@@ -31,9 +34,12 @@ fn strip_ansi(s: &str) -> String {
 }
 
 impl SkimItem for PickerItem {
-    /// Plain text for fuzzy matching (ANSI stripped).
+    /// Plain text for fuzzy matching.
     fn text(&self) -> Cow<'_, str> {
-        Cow::Owned(strip_ansi(&self.display))
+        match &self.search_text {
+            Some(t) => Cow::Borrowed(t),
+            None => Cow::Owned(strip_ansi(&self.display)),
+        }
     }
 
     /// Rendered display with ANSI colors parsed.
@@ -50,18 +56,98 @@ impl SkimItem for PickerItem {
     }
 }
 
-/// Run the skim picker with the given items and optional preview command.
-/// Returns the selected item's output string, or None if the user cancelled.
-pub fn run_picker(items: Vec<PickerItem>, preview_cmd: Option<&str>) -> Option<String> {
+// ---------------------------------------------------------------------------
+// Shared path utilities
+// ---------------------------------------------------------------------------
+
+/// Replace the home directory prefix with `~`.
+pub fn tilde_path(path: &str) -> String {
+    if let Ok(home) = std::env::var("HOME") {
+        if let Some(rest) = path.strip_prefix(&home) {
+            return format!("~{rest}");
+        }
+    }
+    path.to_string()
+}
+
+/// Compress a path by abbreviating middle segments to their first character.
+/// Keeps the first segment (e.g. `~`) and last two segments intact.
+/// Example: `~/dev/tdavies/tmux-agent/src` → `~/d/t/tmux-agent/src`
+pub fn compress_path(path: &str) -> String {
+    let path = tilde_path(path);
+    let parts: Vec<&str> = path.split('/').collect();
+
+    if parts.len() <= 3 {
+        return path;
+    }
+
+    let first = parts[0];
+    let middle = &parts[1..parts.len() - 2];
+    let last_two = &parts[parts.len() - 2..];
+
+    let compressed_middle: Vec<String> = middle
+        .iter()
+        .map(|seg| {
+            if seg.is_empty() {
+                String::new()
+            } else {
+                seg.chars().next().unwrap().to_string()
+            }
+        })
+        .collect();
+
+    format!(
+        "{}/{}/{}",
+        first,
+        compressed_middle.join("/"),
+        last_two.join("/"),
+    )
+}
+
+/// Return the last two segments of a path, space-separated for search.
+/// Example: `~/dev/tdavies/tmux-agent/src` → `tmux-agent src`
+pub fn path_tail(path: &str) -> String {
+    let path = tilde_path(path);
+    let parts: Vec<&str> = path.split('/').collect();
+    if parts.len() <= 2 {
+        return path;
+    }
+    parts[parts.len() - 2..].join(" ")
+}
+
+// ---------------------------------------------------------------------------
+// Number prefixes
+// ---------------------------------------------------------------------------
+
+/// Prepend bold number prefixes (0-9) to the first 10 items.
+/// Items beyond 10 get blank padding for alignment.
+fn add_number_prefixes(items: &mut [PickerItem]) {
+    for (i, item) in items.iter_mut().enumerate() {
+        let prefix = if i < 10 {
+            format!("\x1b[1m{}\x1b[0m  ", i)
+        } else {
+            "   ".to_string()
+        };
+        item.display = format!("{}{}", prefix, item.display);
+    }
+}
+
+/// Run the skim picker with numbered quick-select.
+/// Items 0-9 can be selected instantly by pressing the digit key.
+/// Any other keypress is handled by skim as normal fuzzy search.
+pub fn run_picker(mut items: Vec<PickerItem>, preview_cmd: Option<&str>) -> Option<String> {
     if items.is_empty() {
         return None;
     }
+
+    add_number_prefixes(&mut items);
 
     let mut options = SkimOptionsBuilder::default();
     options
         .height(Some("100%"))
         .multi(false)
         .reverse(true)
+        .expect(Some("0,1,2,3,4,5,6,7,8,9".to_owned()))
         .bind(vec!["shift-up:preview-up", "shift-down:preview-down"]);
 
     if let Some(cmd) = preview_cmd {
@@ -72,8 +158,8 @@ pub fn run_picker(items: Vec<PickerItem>, preview_cmd: Option<&str>) -> Option<S
     let options = options.build().unwrap();
 
     let (tx, rx): (SkimItemSender, SkimItemReceiver) = unbounded();
-    for item in items {
-        let _ = tx.send(Arc::new(item));
+    for item in &items {
+        let _ = tx.send(Arc::new(item.clone()));
     }
     drop(tx);
 
@@ -81,6 +167,14 @@ pub fn run_picker(items: Vec<PickerItem>, preview_cmd: Option<&str>) -> Option<S
 
     if result.is_abort {
         return None;
+    }
+
+    // Check if a digit key was pressed for quick-select
+    if let Key::Char(c @ '0'..='9') = result.final_key {
+        let idx = (c as u8 - b'0') as usize;
+        if idx < items.len() {
+            return Some(items[idx].output.clone());
+        }
     }
 
     result
