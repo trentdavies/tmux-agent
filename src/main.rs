@@ -62,7 +62,7 @@ async fn run(cli: Cli) -> Result<(), TaError> {
             }
         },
 
-        Command::Switch { target } => {
+        Command::Switch { target, local } => {
             // Base is a direct jump — no popup needed
             if let Some(SwitchTarget::Base {
                 ref name,
@@ -74,27 +74,35 @@ async fn run(cli: Cli) -> Result<(), TaError> {
 
             // If inside tmux but not already in a popup, re-exec inside display-popup
             if should_popup() {
-                return exec_in_popup(&target).await;
+                return exec_in_popup(&target, local).await;
             }
+
+            // Resolve current session for --local / ctrl-s filtering
+            let current_session = client
+                .run(&["display-message", "-p", "#{session_name}"])
+                .await
+                .unwrap_or_default()
+                .trim()
+                .to_string();
 
             match target {
                 None => {
-                    switch::pane::switch_pane(&client).await?;
+                    switch::pane::switch_pane(&client, &current_session, local).await?;
                 }
                 Some(SwitchTarget::Session) => {
                     switch::session::switch_session(&client).await?;
                 }
                 Some(SwitchTarget::Window) => {
-                    switch::window::switch_window(&client).await?;
+                    switch::window::switch_window(&client, &current_session, local).await?;
                 }
                 Some(SwitchTarget::Pane) => {
-                    switch::pane::switch_pane(&client).await?;
+                    switch::pane::switch_pane(&client, &current_session, local).await?;
                 }
                 Some(SwitchTarget::Worktree) => {
-                    switch::worktree::switch_worktree(&client).await?;
+                    switch::worktree::switch_worktree(&client, &current_session, local).await?;
                 }
                 Some(SwitchTarget::Agent) => {
-                    switch::agent::switch_agent(&client).await?;
+                    switch::agent::switch_agent(&client, &current_session, local).await?;
                 }
                 Some(SwitchTarget::Base { .. }) => unreachable!(),
             }
@@ -131,21 +139,22 @@ fn should_popup() -> bool {
 }
 
 /// Re-exec `ta switch [target]` inside a tmux display-popup.
-async fn exec_in_popup(target: &Option<SwitchTarget>) -> Result<(), TaError> {
+async fn exec_in_popup(target: &Option<SwitchTarget>, local: bool) -> Result<(), TaError> {
     let ta_bin = "ta".to_string();
 
-    let subcmd = match target {
-        None => "switch".to_string(),
-        Some(SwitchTarget::Session) => "switch session".to_string(),
-        Some(SwitchTarget::Window) => "switch window".to_string(),
-        Some(SwitchTarget::Pane) => "switch pane".to_string(),
-        Some(SwitchTarget::Worktree) => "switch worktree".to_string(),
-        Some(SwitchTarget::Agent) => "switch agent".to_string(),
+    let target_str = match target {
+        None => "",
+        Some(SwitchTarget::Session) => "session",
+        Some(SwitchTarget::Window) => "window",
+        Some(SwitchTarget::Pane) => "pane",
+        Some(SwitchTarget::Worktree) => "worktree",
+        Some(SwitchTarget::Agent) => "agent",
         // Unreachable: base is handled before popup check
         Some(SwitchTarget::Base { .. }) => unreachable!(),
     };
 
-    let inner_cmd = format!("TA_POPUP=1 {} {}", ta_bin, subcmd);
+    let local_flag = if local { " --local" } else { "" };
+    let inner_cmd = format!("TA_POPUP=1 {} switch{} {}", ta_bin, local_flag, target_str);
 
     // display-popup blocks until the popup is dismissed, so we need to
     // inherit stdio (not capture) so tmux can communicate properly.

@@ -34,6 +34,10 @@ pub enum Command {
     Switch {
         #[command(subcommand)]
         target: Option<SwitchTarget>,
+
+        /// Filter to current session only
+        #[arg(long, short = 'l')]
+        local: bool,
     },
     /// Generate shell integration (aliases, completions)
     Shell {

@@ -3,12 +3,16 @@ use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{compress_path, git_branches, path_tail, run_picker, switch_to, PickerItem};
+use super::{compress_path, git_branches, path_tail, run_filterable_picker, switch_to, PickerItem};
 
 /// Agent switcher — lists all detected agent panes with status.
 /// Uses multi-method detection: process tree > content > title.
 /// Status priority: @ta_status/@workmux_status window option > output patterns > title.
-pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
+pub async fn switch_agent(
+    client: &TmuxClient,
+    current_session: &str,
+    local: bool,
+) -> Result<(), TaError> {
     let all_panes = list_all_panes(client).await?;
     let sys = snapshot_processes();
 
@@ -88,12 +92,13 @@ pub async fn switch_agent(client: &TmuxClient) -> Result<(), TaError> {
             display,
             output: target.clone(),
             search_text: Some(search),
+            session: Some(pane.session_name.clone()),
         });
     }
 
     let preview_cmd = "tmux capture-pane -p -t {}";
 
-    if let Some(target) = run_picker(items, Some(preview_cmd)) {
+    if let Some(target) = run_filterable_picker(items, current_session, local, Some(preview_cmd)) {
         switch_to(client, &target).await?;
     }
 

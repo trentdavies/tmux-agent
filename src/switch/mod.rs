@@ -24,6 +24,8 @@ pub struct PickerItem {
     pub display: String,
     pub output: String,
     pub search_text: Option<String>,
+    /// Session name for filtering (None = always visible).
+    pub session: Option<String>,
 }
 
 /// Strip ANSI escape codes from a string.
@@ -211,6 +213,141 @@ pub fn run_picker(mut items: Vec<PickerItem>, preview_cmd: Option<&str>) -> Opti
         .selected_items
         .first()
         .map(|item| item.output().to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Filterable picker (session toggle via ctrl-s)
+// ---------------------------------------------------------------------------
+
+enum PickerResult {
+    Selected(String),
+    Aborted,
+    Toggle { query: String },
+}
+
+/// Run skim once, returning a structured result that distinguishes
+/// selection, abort, and toggle (ctrl-s).
+fn run_picker_inner(
+    mut items: Vec<PickerItem>,
+    preview_cmd: Option<&str>,
+    prompt: &str,
+    header: &str,
+    query: Option<&str>,
+) -> PickerResult {
+    if items.is_empty() {
+        return PickerResult::Aborted;
+    }
+
+    add_number_prefixes(&mut items);
+
+    let mut options = SkimOptionsBuilder::default();
+    options
+        .height(Some("100%"))
+        .multi(false)
+        .reverse(true)
+        .prompt(Some(prompt))
+        .header(Some(header))
+        .expect(Some("0,1,2,3,4,5,6,7,8,9,ctrl-s".to_owned()))
+        .bind(vec!["shift-up:preview-up", "shift-down:preview-down"]);
+
+    if let Some(q) = query {
+        options.query(Some(q));
+    }
+
+    if let Some(cmd) = preview_cmd {
+        options.preview(Some(cmd));
+        options.preview_window(Some("right:50%"));
+    }
+
+    let options = options.build().unwrap();
+
+    let (tx, rx): (SkimItemSender, SkimItemReceiver) = unbounded();
+    for item in &items {
+        let _ = tx.send(Arc::new(item.clone()));
+    }
+    drop(tx);
+
+    let result = match Skim::run_with(&options, Some(rx)) {
+        Some(r) => r,
+        None => return PickerResult::Aborted,
+    };
+
+    if result.is_abort {
+        return PickerResult::Aborted;
+    }
+
+    // Toggle session filter
+    if result.final_key == Key::Ctrl('s') {
+        return PickerResult::Toggle {
+            query: result.query.clone(),
+        };
+    }
+
+    // Digit quick-select
+    if let Key::Char(c @ '0'..='9') = result.final_key {
+        let idx = (c as u8 - b'0') as usize;
+        if idx < items.len() {
+            return PickerResult::Selected(items[idx].output.clone());
+        }
+    }
+
+    match result.selected_items.first() {
+        Some(item) => PickerResult::Selected(item.output().to_string()),
+        None => PickerResult::Aborted,
+    }
+}
+
+/// Run the picker with session-filter toggle support.
+/// Pressing ctrl-s toggles between showing all items and only items
+/// matching `current_session`. The user's query text is preserved
+/// across toggles.
+pub fn run_filterable_picker(
+    all_items: Vec<PickerItem>,
+    current_session: &str,
+    start_local: bool,
+    preview_cmd: Option<&str>,
+) -> Option<String> {
+    let mut local_mode = start_local;
+    let mut query: Option<String> = None;
+
+    loop {
+        let items: Vec<PickerItem> = if local_mode {
+            all_items
+                .iter()
+                .filter(|item| item.session.as_deref() == Some(current_session))
+                .cloned()
+                .collect()
+        } else {
+            all_items.clone()
+        };
+
+        let prompt = if local_mode {
+            format!("[{}] > ", current_session)
+        } else {
+            "> ".to_string()
+        };
+
+        let header = if local_mode {
+            "ctrl-s: show all sessions".to_string()
+        } else {
+            "ctrl-s: filter to current session".to_string()
+        };
+
+        match run_picker_inner(
+            items,
+            preview_cmd,
+            &prompt,
+            &header,
+            query.as_deref(),
+        ) {
+            PickerResult::Selected(s) => return Some(s),
+            PickerResult::Aborted => return None,
+            PickerResult::Toggle { query: q } => {
+                local_mode = !local_mode;
+                query = Some(q);
+            }
+        }
+    }
 }
 
 /// Switch tmux client to the given target.

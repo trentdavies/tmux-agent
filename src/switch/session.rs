@@ -38,6 +38,7 @@ pub async fn switch_session(client: &TmuxClient) -> Result<(), TaError> {
                 display,
                 output: s.name.clone(),
                 search_text: Some(format!("{} {}", s.name, tail)),
+                session: None,
             }
         })
         .collect();

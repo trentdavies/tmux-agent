@@ -2,9 +2,13 @@ use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{compress_path, git_branches, path_tail, run_picker, switch_to, PickerItem};
+use super::{compress_path, git_branches, path_tail, run_filterable_picker, switch_to, PickerItem};
 
-pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
+pub async fn switch_window(
+    client: &TmuxClient,
+    current_session: &str,
+    local: bool,
+) -> Result<(), TaError> {
     let panes = list_all_panes(client).await?;
 
     // Group panes by session:window
@@ -48,16 +52,20 @@ pub async fn switch_window(client: &TmuxClient) -> Result<(), TaError> {
             search.push_str(b);
         }
 
+        // Session is the part before ':'
+        let session_name = key.split(':').next().unwrap_or(key).to_string();
+
         items.push(PickerItem {
             display,
             output: key.clone(),
             search_text: Some(search),
+            session: Some(session_name),
         });
     }
 
     let preview_cmd = "tmux capture-pane -p -t {1} 2>/dev/null || echo '(no preview)'";
 
-    if let Some(target) = run_picker(items, Some(preview_cmd)) {
+    if let Some(target) = run_filterable_picker(items, current_session, local, Some(preview_cmd)) {
         let window_target = target.split_whitespace().next().unwrap_or(&target);
         switch_to(client, window_target).await?;
     }

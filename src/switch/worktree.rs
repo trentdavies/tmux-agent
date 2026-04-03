@@ -4,12 +4,16 @@ use crate::error::TaError;
 use crate::tmux::session::list_all_panes;
 use crate::tmux::TmuxClient;
 
-use super::{run_picker, switch_to, PickerItem};
+use super::{run_filterable_picker, switch_to, PickerItem};
 
 /// Worktree switcher — replaces wt() from zshrc.
 /// Lists worktrees from the current repo, jumps to an existing window
 /// at that path or creates a new window in the current session.
-pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
+pub async fn switch_worktree(
+    client: &TmuxClient,
+    current_session: &str,
+    local: bool,
+) -> Result<(), TaError> {
     // Get the git root of the current pane's working directory
     let current_path = client
         .run(&["display-message", "-p", "#{pane_current_path}"])
@@ -38,6 +42,12 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
         .map(|wt| {
             let leaf = wt.path.rsplit('/').next().unwrap_or(&wt.path);
 
+            // Session of first pane at this worktree path (for --local filtering)
+            let session = path_to_panes
+                .get(wt.path.as_str())
+                .and_then(|ps| ps.first())
+                .map(|p| p.session_name.clone());
+
             let display = format!(
                 "\x1b[38;5;208m[{}]\x1b[0m \x1b[90m../{}\x1b[0m",
                 wt.branch, leaf,
@@ -47,6 +57,7 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
                 display,
                 output: wt.path.clone(),
                 search_text: Some(format!("{} {}", wt.branch, leaf)),
+                session,
             }
         })
         .collect();
@@ -63,7 +74,7 @@ pub async fn switch_worktree(client: &TmuxClient) -> Result<(), TaError> {
         "fi"
     );
 
-    if let Some(selected_path) = run_picker(items, Some(preview_cmd)) {
+    if let Some(selected_path) = run_filterable_picker(items, current_session, local, Some(preview_cmd)) {
         let path = selected_path
             .split_whitespace()
             .next()
