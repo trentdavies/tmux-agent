@@ -2,6 +2,7 @@ use clap::Parser;
 use std::process::ExitCode;
 
 mod agent;
+mod alerts;
 mod cli;
 mod envelope;
 mod error;
@@ -118,6 +119,10 @@ async fn run(cli: Cli) -> Result<(), TaError> {
             } else {
                 window_status::set_window_status(&client, &args.status).await?;
             }
+        }
+
+        Command::Alerts(args) => {
+            alerts::run(&client, &args).await?;
         }
 
         Command::Setup { action } => match action {
@@ -346,7 +351,7 @@ fn resolve_bindings(args: &cli::BindArgs) -> Vec<(String, String)> {
 }
 
 /// Generate the tmux.conf content for current bindings.
-fn generate_bindings_conf(bindings: &[(String, String)], ta_bin: &str) -> String {
+fn generate_bindings_conf(bindings: &[(String, String)], ta_bin: &str, alerts: bool) -> String {
     let mut lines = vec![
         "# ta keybindings — managed by `ta setup tmux`".to_string(),
         "# Source this from your tmux.conf:".to_string(),
@@ -368,6 +373,16 @@ fn generate_bindings_conf(bindings: &[(String, String)], ta_bin: &str) -> String
             ));
         }
     }
+
+    if alerts {
+        lines.push(String::new());
+        lines.push("# ta alerts status bar segment".to_string());
+        lines.push(format!(
+            "set -g status-right \"#({} alerts)#{{E:@catppuccin_status_directory}}\"",
+            ta_bin
+        ));
+    }
+
     lines.push(String::new());
     lines.join("\n")
 }
@@ -378,12 +393,13 @@ async fn persist_and_apply(
     client: &TmuxClient,
     bindings: &[(String, String)],
     ta_bin: &str,
+    alerts: bool,
 ) -> Result<(), TaError> {
     // Save prior bindings before overwriting
     let keys: Vec<String> = bindings.iter().map(|(k, _)| k.clone()).collect();
     save_prior_bindings(client, &keys).await?;
 
-    let conf = generate_bindings_conf(bindings, ta_bin);
+    let conf = generate_bindings_conf(bindings, ta_bin, alerts);
     let path = bindings_path();
 
     // Ensure config dir exists
@@ -441,7 +457,8 @@ async fn run_bind(client: &TmuxClient, args: cli::BindArgs) -> Result<(), TaErro
     }
 
     let bindings = resolve_bindings(&args);
-    persist_and_apply(client, &bindings, &ta_bin).await?;
+    let alerts = !args.no_alerts;
+    persist_and_apply(client, &bindings, &ta_bin, alerts).await?;
 
     let path_display = path.display();
     for (key, subcmd) in &bindings {

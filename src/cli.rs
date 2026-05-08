@@ -51,6 +51,15 @@ pub enum Command {
         #[command(subcommand)]
         action: SetupAction,
     },
+    /// Show agents needing attention (for tmux status-right)
+    Alerts(AlertsArgs),
+}
+
+#[derive(Args)]
+pub struct AlertsArgs {
+    /// Maximum display width before truncation
+    #[arg(long, default_value_t = 60)]
+    pub max_width: usize,
 }
 
 #[derive(Args)]
@@ -185,6 +194,10 @@ pub struct BindArgs {
     /// Also add source-file line to ~/.tmux.conf
     #[arg(long)]
     pub persist: bool,
+
+    /// Skip adding the alerts status-bar segment
+    #[arg(long)]
+    pub no_alerts: bool,
 }
 
 #[derive(Clone, clap::ValueEnum)]
