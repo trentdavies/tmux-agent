@@ -6,18 +6,62 @@ A fast Rust CLI for navigating tmux sessions, windows, panes, worktrees, and AI 
 
 ## Install
 
+Popup bindings require tmux 3.2+ for `display-popup`.
+
+### Manual
+
 ```bash
 cargo build --release
 cp target/release/ta ~/.local/bin/
+ta setup tmux --persist
+tmux source-file ~/.tmux.conf
 ```
+
+Then use `prefix-a` to open the agent switcher.
+
+### TPM / tmux plugin manager
+
+Add to `~/.tmux.conf`:
+
+```tmux
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'trentdavies/tmux-agent'
+run '~/.tmux/plugins/tpm/tpm'
+```
+
+Reload tmux config, then install plugins:
+
+```bash
+tmux source-file ~/.tmux.conf
+```
+
+Then press `prefix-I`. After install, use `prefix-a` to open the agent switcher.
+
+The plugin loads the default bindings directly. By default it runs `cargo build --release --locked` from the plugin checkout when the plugin-local `target/release/ta` is missing or older than the checkout. This requires Cargo/Rust 1.85+ unless `@tmux-agent-bin` is set. On a cold Cargo cache, the first build can download crates and run dependency build scripts.
+
+Upgrade through TPM with `prefix-U`, then reload tmux config or restart tmux so the plugin runs against the updated checkout.
+
+To use a specific binary:
+
+```tmux
+set -g @tmux-agent-bin "$HOME/.local/bin/ta"
+```
+
+When `@tmux-agent-bin` is set, the plugin does not build or upgrade that binary.
+
+Build failures are written to `${XDG_CACHE_HOME:-$HOME/.cache}/tmux-agent/build.log`, with a plugin-local `target/build.log` fallback.
 
 ## Quick start
 
-```bash
-# Set up tmux keybindings (prefix-s, prefix-w, prefix-p, prefix-t, prefix-a)
-ta bind --persist
+After installing, open the agent switcher with:
 
-# Or add shell aliases (ts, tw, tp, twt)
+```text
+prefix-a
+```
+
+Optional shell aliases:
+
+```bash
 eval "$(ta shell zsh)"
 ```
 
@@ -25,7 +69,7 @@ eval "$(ta shell zsh)"
 
 | Command | Key | Description |
 |---------|-----|-------------|
-| `ta switch` | `prefix-p` | All panes across sessions — directory, branch, agent type |
+| `ta switch` | `prefix-f` | All panes across sessions — directory, branch, agent type |
 | `ta switch session` | `prefix-s` | Pick a session |
 | `ta switch window` | `prefix-w` | Pick a window across all sessions |
 | `ta switch worktree` | `prefix-t` | Git worktrees in the current repo — jumps to existing window or creates one |
@@ -56,13 +100,15 @@ Status is detected from pane title spinners and output patterns:
 ## Keybindings
 
 ```bash
-ta bind              # Bind all defaults
-ta bind --persist    # Also add source-file to ~/.tmux.conf
-ta bind --show       # Show current bindings
-ta bind --unbind     # Remove bindings (restores prior keys)
+ta setup tmux              # Bind all defaults
+ta setup tmux --persist    # Also add source-file to ~/.tmux.conf
+ta setup tmux --show       # Show current bindings
+ta setup tmux --unbind     # Remove bindings (restores prior keys)
 ```
 
 Bindings are persisted to `~/.config/ta/tmux.conf`. Prior keybindings are saved and restored on `--unbind`.
+
+With TPM, the plugin binds keys on tmux startup and does not edit `.tmux.conf`.
 
 ## Structured output
 
